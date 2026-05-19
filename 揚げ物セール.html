@@ -1,0 +1,1524 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>🍗 揚げ物セール予算管理アプリ｜セブン-イレブン</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+  <style>
+    [v-cloak]{display:none}
+    body{font-family:'Hiragino Kaku Gothic ProN','Hiragino Sans','Meiryo','Yu Gothic',sans-serif;background:#f0f4f8}
+
+    .step-active  {background:linear-gradient(135deg,#f97316,#ea580c);color:#fff}
+    .step-done    {background:linear-gradient(135deg,#22c55e,#16a34a);color:#fff;cursor:pointer}
+    .step-inactive{background:#e2e8f0;color:#94a3b8;cursor:not-allowed}
+
+    .card{background:#fff;border-radius:16px;box-shadow:0 4px 24px rgba(0,0,0,.08)}
+
+    .btn-primary  {background:linear-gradient(135deg,#f97316,#ea580c);color:#fff;border-radius:10px;padding:10px 24px;font-weight:700;transition:all .2s;cursor:pointer;border:none}
+    .btn-primary:hover{transform:translateY(-2px);box-shadow:0 6px 20px rgba(249,115,22,.4)}
+    .btn-secondary{background:#fff;color:#f97316;border:2px solid #f97316;border-radius:10px;padding:10px 24px;font-weight:700;transition:all .2s;cursor:pointer}
+    .btn-secondary:hover{background:#fff7ed;transform:translateY(-2px)}
+    .btn-sm       {padding:5px 12px;font-size:12px;border-radius:8px;font-weight:600;cursor:pointer;border:none;transition:all .2s}
+    .btn-danger   {background:linear-gradient(135deg,#ef4444,#dc2626);color:#fff}
+    .btn-danger:hover{transform:translateY(-1px);box-shadow:0 4px 12px rgba(239,68,68,.4)}
+    .btn-gray     {background:#e2e8f0;color:#475569}
+    .btn-gray:hover{background:#cbd5e1}
+    .btn-teal     {background:linear-gradient(135deg,#14b8a6,#0d9488);color:#fff}
+    .btn-teal:hover{transform:translateY(-1px);box-shadow:0 4px 12px rgba(20,184,166,.4)}
+    .btn-indigo   {background:linear-gradient(135deg,#6366f1,#4f46e5);color:#fff}
+    .btn-indigo:hover{transform:translateY(-1px);box-shadow:0 4px 12px rgba(99,102,241,.4)}
+
+    .input-field{border:2px solid #e2e8f0;border-radius:10px;padding:9px 13px;width:100%;transition:border-color .2s;outline:none;font-size:14px}
+    .input-field:focus{border-color:#f97316;box-shadow:0 0 0 3px rgba(249,115,22,.1)}
+    .input-field.error{border-color:#ef4444}
+    .input-wrap{position:relative}
+    .input-unit{position:absolute;right:10px;top:50%;transform:translateY(-50%);color:#94a3b8;font-size:12px;pointer-events:none}
+
+    .progress-bar {height:6px;background:#e2e8f0;border-radius:99px;overflow:hidden}
+    .progress-fill{height:100%;border-radius:99px;background:linear-gradient(90deg,#f97316,#ea580c);transition:width .5s ease}
+
+    .layout-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+    .layout-cell{min-height:80px;border-radius:10px;border:2px dashed #cbd5e1;background:#f8fafc;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;font-size:10px;font-weight:600;color:#64748b;transition:all .2s;cursor:pointer;position:relative;padding:4px;word-break:break-all}
+    .layout-cell.has-item{border-style:solid;border-color:transparent;color:#fff}
+    .layout-cell.drag-over{border-color:#f97316;background:#fff7ed;transform:scale(1.04)}
+    .layout-cell.dragging {opacity:.4}
+
+    .item-chip{display:inline-flex;align-items:center;gap:4px;background:#fff;border:2px solid #e2e8f0;border-radius:8px;padding:4px 10px;font-size:11px;font-weight:600;cursor:grab;transition:all .2s;user-select:none}
+    .item-chip:hover{border-color:#f97316;background:#fff7ed;transform:translateY(-1px);box-shadow:0 4px 12px rgba(0,0,0,.1)}
+
+    .tab-btn{padding:8px 20px;border-radius:8px;font-weight:700;font-size:13px;transition:all .2s;cursor:pointer;border:none}
+    .tab-btn.active  {background:linear-gradient(135deg,#f97316,#ea580c);color:#fff;box-shadow:0 4px 12px rgba(249,115,22,.3)}
+    .tab-btn.inactive{background:#f1f5f9;color:#64748b}
+    .tab-btn.inactive:hover{background:#e2e8f0}
+
+    .alert-box    {border-radius:10px;padding:10px 16px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px}
+    .alert-error  {background:#fef2f2;border:1.5px solid #fecaca;color:#dc2626}
+    .alert-success{background:#f0fdf4;border:1.5px solid #bbf7d0;color:#16a34a}
+    .alert-info   {background:#eff6ff;border:1.5px solid #bfdbfe;color:#2563eb}
+    .alert-warn   {background:#fffbeb;border:1.5px solid #fde68a;color:#d97706}
+
+    @keyframes fadeIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+    .fade-in{animation:fadeIn .35s ease}
+    @keyframes rowDelete{from{opacity:1;transform:scaleY(1)}to{opacity:0;transform:scaleY(0);height:0;padding:0;margin:0}}
+    .row-deleting{animation:rowDelete .25s ease forwards}
+    @keyframes pulse-green{0%,100%{box-shadow:0 0 0 0 rgba(34,197,94,.4)}50%{box-shadow:0 0 0 8px rgba(34,197,94,0)}}
+    .pulse-green{animation:pulse-green .6s ease}
+
+    .color-dot{width:10px;height:10px;border-radius:50%;display:inline-block;flex-shrink:0}
+    .grand-total-card{background:linear-gradient(135deg,#f97316,#ea580c);border-radius:16px;padding:20px 28px;color:#fff}
+    .cell-remove-btn{position:absolute;top:2px;right:2px;width:16px;height:16px;background:rgba(0,0,0,.35);border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:9px;color:#fff;z-index:2}
+    .cell-remove-btn:hover{background:rgba(239,68,68,.85)}
+    .summary-badge{display:inline-flex;align-items:center;gap:6px;background:#fff7ed;border:1.5px solid #fed7aa;border-radius:8px;padding:4px 12px;font-size:13px;font-weight:700;color:#ea580c}
+    .section-header{font-size:18px;font-weight:800;color:#1e293b;display:flex;align-items:center;gap:8px}
+    .layout-section{background:#f8fafc;border-radius:12px;padding:16px;border:1.5px solid #e2e8f0}
+    select.input-field{appearance:auto}
+
+    .row-del-btn{width:26px;height:26px;border-radius:50%;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:900;transition:all .2s;flex-shrink:0;background:#fee2e2;color:#ef4444}
+    .row-del-btn:hover{background:#ef4444;color:#fff;transform:scale(1.15);box-shadow:0 3px 10px rgba(239,68,68,.4)}
+
+    .restore-bar{background:#fef3c7;border:1.5px solid #fde68a;border-radius:10px;padding:8px 14px;display:flex;align-items:center;gap:10px;font-size:13px;font-weight:600;color:#92400e}
+
+    .sort-th{cursor:pointer;user-select:none;white-space:nowrap}
+    .sort-th:hover{background:#fef3c7}
+    .sort-icon{display:inline-flex;flex-direction:column;gap:0;margin-left:4px;vertical-align:middle}
+    .sort-icon span{font-size:8px;line-height:1;color:#cbd5e1}
+    .sort-icon span.on{color:#f97316}
+
+    /* 一括仕込みパネル */
+    .bulk-stock-panel{background:linear-gradient(135deg,#f0fdfa,#ccfbf1);border:2px solid #5eead4;border-radius:14px;padding:16px 20px}
+    .bulk-stock-panel .scope-btn{padding:6px 14px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;border:2px solid transparent;transition:all .2s}
+    .bulk-stock-panel .scope-btn.selected{background:#14b8a6;color:#fff;border-color:#0d9488;box-shadow:0 3px 10px rgba(20,184,166,.35)}
+    .bulk-stock-panel .scope-btn:not(.selected){background:#fff;color:#0d9488;border-color:#5eead4}
+    .bulk-stock-panel .scope-btn:not(.selected):hover{background:#f0fdfa}
+
+    @media print{
+      @page{size:A4 portrait;margin:12mm 10mm}
+      *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
+      body{background:#fff!important;font-size:11px}
+      .no-print,header,.step-indicator,.progress-bar,
+      .btn-primary,.btn-secondary,.btn-sm,.btn-danger,.btn-gray,.btn-teal,.btn-indigo,
+      .tab-btn,.alert-box,.item-chip,.cell-remove-btn,
+      .row-del-btn,.restore-bar,.bulk-stock-panel,#toast-area{display:none!important}
+      .card{box-shadow:none!important;border:1px solid #e2e8f0!important;border-radius:8px!important;margin-bottom:12px!important}
+      .print-page{display:block!important;page-break-after:always;padding:0!important}
+      .print-page:last-child{page-break-after:avoid}
+      .screen-only{display:none!important}
+      .layout-grid{gap:4px!important}
+      .layout-cell{min-height:60px!important;font-size:9px!important}
+      table{width:100%!important;border-collapse:collapse!important;font-size:10px!important}
+      th,td{border:1px solid #d1d5db!important;padding:4px 6px!important}
+      thead tr{background:#f97316!important;color:#fff!important}
+      .grand-total-card{background:#f97316!important}
+    }
+    @media screen{#print-area{display:none!important}}
+  </style>
+</head>
+<body>
+<div id="app" v-cloak>
+
+  <!-- HEADER -->
+  <header class="sticky top-0 z-50 no-print" style="background:linear-gradient(135deg,#f97316,#ea580c);box-shadow:0 4px 20px rgba(249,115,22,.35)">
+    <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <span class="text-3xl">🍗</span>
+        <div>
+          <div class="text-white font-black text-lg leading-tight">揚げ物セール予算管理</div>
+          <div class="text-orange-100 text-xs">セブン-イレブン 揚げ物惣菜 売場予算プランナー</div>
+        </div>
+      </div>
+      <div class="flex items-center gap-2">
+        <button @click="printAll" class="bg-white text-orange-600 font-bold text-xs px-3 py-1.5 rounded-lg hover:bg-orange-50 transition-all">🖨️ 全ページ印刷</button>
+        <button @click="resetAll" class="text-orange-100 hover:text-white text-xs px-3 py-1.5 rounded-lg hover:bg-orange-700 transition-all">🔄 リセット</button>
+        <button @click="saveAll" class="bg-white text-orange-600 font-bold text-xs px-3 py-1.5 rounded-lg hover:bg-orange-50 transition-all">💾 保存</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- STEP INDICATOR -->
+  <div class="step-indicator max-w-6xl mx-auto px-4 pt-6 pb-2 no-print">
+    <div class="flex items-center gap-2 justify-center">
+      <template v-for="(s,i) in steps" :key="i">
+        <button @click="goStep(i)"
+          :class="['flex items-center gap-2 px-4 py-2 rounded-full font-bold text-sm transition-all',
+            currentStep===i?'step-active shadow-lg scale-105':
+            i<currentStep?'step-done hover:scale-105':'step-inactive']">
+          <span>{{s.icon}}</span>
+          <span class="hidden sm:inline">{{s.label}}</span>
+          <span class="sm:hidden">{{i+1}}</span>
+        </button>
+        <div v-if="i<steps.length-1" :class="['h-1 flex-1 rounded-full transition-all',i<currentStep?'bg-green-400':'bg-gray-200']"></div>
+      </template>
+    </div>
+    <div class="progress-bar mt-4">
+      <div class="progress-fill" :style="{width:(currentStep/(steps.length-1)*100)+'%'}"></div>
+    </div>
+  </div>
+
+  <div class="max-w-6xl mx-auto px-4 py-6">
+
+    <!-- ============================================================
+         STEP 0: 販売目標金額
+    ============================================================ -->
+    <div v-show="currentStep===0" class="fade-in space-y-6">
+      <div class="card p-6">
+        <div class="section-header mb-1">💰 STEP 1：販売目標金額の設定</div>
+        <p class="text-slate-500 text-sm mb-6">セール期間・日別の売上目標を設定してください。基準値に目標比率を掛けて目標金額を自動計算します。</p>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+          <div>
+            <label class="block text-sm font-bold text-slate-700 mb-1">📅 セール名称 <span class="text-red-500">*</span></label>
+            <input v-model="budget.saleName" class="input-field" :class="{error:errors.saleName}" placeholder="例：夏の揚げ物フェア" />
+            <p v-if="errors.saleName" class="text-red-500 text-xs mt-1">{{errors.saleName}}</p>
+          </div>
+          <div>
+            <label class="block text-sm font-bold text-slate-700 mb-1">🏪 店舗名</label>
+            <input v-model="budget.storeName" class="input-field" placeholder="例：○○店" />
+          </div>
+          <div>
+            <label class="block text-sm font-bold text-slate-700 mb-1">📆 セール開始日 <span class="text-red-500">*</span></label>
+            <input v-model="budget.startDate" type="date" class="input-field" :class="{error:errors.startDate}" />
+            <p v-if="errors.startDate" class="text-red-500 text-xs mt-1">{{errors.startDate}}</p>
+          </div>
+          <div>
+            <label class="block text-sm font-bold text-slate-700 mb-1">📆 セール終了日 <span class="text-red-500">*</span></label>
+            <input v-model="budget.endDate" type="date" class="input-field" :class="{error:errors.endDate}" />
+            <p v-if="errors.endDate" class="text-red-500 text-xs mt-1">{{errors.endDate}}</p>
+          </div>
+        </div>
+
+        <div class="bg-orange-50 rounded-xl p-4 mb-5 border border-orange-200">
+          <div class="font-bold text-orange-700 mb-3 text-sm">⚡ 一括設定</div>
+          <div class="flex flex-wrap gap-3 items-end">
+            <div>
+              <label class="block text-xs font-bold text-slate-600 mb-1">基準値（全日共通）</label>
+              <div class="input-wrap">
+                <input v-model.number="bulkBase" type="number" class="input-field pr-8" style="width:150px" placeholder="" min="0" />
+                <span class="input-unit">円</span>
+              </div>
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-slate-600 mb-1">目標比率（全日共通）</label>
+              <select v-model="bulkRatio" class="input-field" style="width:160px">
+                <option v-for="r in ratioOptions" :key="r.value" :value="r.value">{{r.label}}</option>
+              </select>
+            </div>
+            <button @click="applyBulk" class="btn-primary btn-sm px-4 py-2.5 text-sm">全日に適用</button>
+          </div>
+        </div>
+
+        <div class="font-bold text-slate-700 mb-3">📊 日別販売目標金額</div>
+        <div v-if="budget.dailyTargets.length===0" class="alert-box alert-info">
+          <span>ℹ️</span> セール開始日・終了日を設定すると日別入力欄が表示されます。
+        </div>
+        <div v-else class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead>
+              <tr class="bg-slate-50">
+                <th class="text-left px-3 py-2.5 font-bold text-slate-600 rounded-l-xl">日付</th>
+                <th class="text-center px-3 py-2.5 font-bold text-slate-600">基準値（円）</th>
+                <th class="text-center px-3 py-2.5 font-bold text-slate-600">目標比率</th>
+                <th class="text-center px-3 py-2.5 font-bold text-slate-600 rounded-r-xl">目標金額（自動計算）</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="(d,i) in budget.dailyTargets" :key="i" class="border-b border-slate-100 hover:bg-orange-50 transition-all">
+                <td class="px-3 py-2 font-bold text-slate-700">{{d.label}}</td>
+                <td class="px-3 py-2">
+                  <div class="input-wrap">
+                    <input v-model.number="d.baseAmount" type="number" class="input-field pr-8 py-1.5 text-sm text-right" placeholder="" min="0" style="min-width:110px" @input="calcDailyAmount(d)" />
+                    <span class="input-unit">円</span>
+                  </div>
+                </td>
+                <td class="px-3 py-2">
+                  <select v-model="d.ratio" class="input-field py-1.5 text-sm" style="min-width:130px" @change="calcDailyAmount(d)">
+                    <option v-for="r in ratioOptions" :key="r.value" :value="r.value">{{r.label}}</option>
+                  </select>
+                </td>
+                <td class="px-3 py-2 text-center">
+                  <div class="font-black text-orange-600 text-base">{{fmtYen(d.amount)}}</div>
+                  <div class="text-xs text-slate-400">{{fmtYen(d.baseAmount)}} × {{d.ratio}}%</div>
+                </td>
+              </tr>
+            </tbody>
+            <tfoot>
+              <tr class="bg-orange-50 font-black">
+                <td class="px-3 py-3 rounded-l-xl text-orange-700" colspan="3">📈 合計目標金額</td>
+                <td class="px-3 py-3 text-center text-orange-700 rounded-r-xl text-xl">{{fmtYen(totalBudget)}}</td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+
+        <div v-if="budget.dailyTargets.length>0" class="grand-total-card mt-5">
+          <div class="flex flex-wrap gap-6 items-center justify-between">
+            <div>
+              <div class="text-orange-100 text-xs font-bold mb-1">📈 セール期間合計目標</div>
+              <div class="text-3xl font-black">{{fmtYen(totalBudget)}}</div>
+            </div>
+            <div class="text-right">
+              <div class="text-orange-100 text-xs font-bold mb-1">📅 期間</div>
+              <div class="text-xl font-black">{{budget.dailyTargets.length}}日間</div>
+            </div>
+            <div class="text-right">
+              <div class="text-orange-100 text-xs font-bold mb-1">📊 日平均</div>
+              <div class="text-xl font-black">{{fmtYen(Math.round(totalBudget/(budget.dailyTargets.length||1)))}}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="flex justify-end">
+        <button @click="nextStep(0)" class="btn-primary text-base px-8 py-3">次へ：単品目標設定 →</button>
+      </div>
+    </div>
+
+    <!-- ============================================================
+         STEP 1: 単品販売目標数・構成比
+    ============================================================ -->
+    <div v-show="currentStep===1" class="fade-in space-y-6">
+      <div class="card p-6">
+        <div class="section-header mb-1">🧮 STEP 2：単品販売目標数・構成比</div>
+        <p class="text-slate-500 text-sm mb-4">各単品の販売目標数と構成比を設定してください。<strong>×ボタン</strong>で行を削除できます（売場レイアウトからも自動削除）。列ヘッダをクリックするとソートできます。</p>
+
+        <div class="flex flex-wrap gap-3 mb-4">
+          <div class="summary-badge">💰 合計予算 {{fmtYen(totalBudget)}}</div>
+          <div :class="['summary-badge',Math.abs(totalRatio-100)<0.1?'bg-green-50 border-green-200 text-green-700':'bg-red-50 border-red-200 text-red-700']">
+            📊 構成比合計 {{totalRatio.toFixed(1)}}%
+            <span v-if="Math.abs(totalRatio-100)<0.1">✅</span><span v-else>⚠️</span>
+          </div>
+          <div class="summary-badge">🍗 合計販売数 {{totalUnits.toLocaleString()}}個</div>
+          <div class="summary-badge">💵 合計売上 {{fmtYen(totalSales)}}</div>
+          <div v-if="deletedItems.length>0" class="summary-badge bg-amber-50 border-amber-200 text-amber-700">
+            🗑️ 削除済み {{deletedItems.length}}件
+          </div>
+        </div>
+
+        <div v-if="deletedItems.length>0" class="restore-bar mb-4">
+          <span>🗑️</span>
+          <span class="flex-1">{{deletedItems.length}}件の商品が削除されています</span>
+          <div class="flex flex-wrap gap-2">
+            <button v-for="d in deletedItems" :key="d.id"
+              @click="restoreItem(d.id)"
+              class="text-xs px-2.5 py-1 rounded-lg font-bold transition-all hover:scale-105"
+              :style="{background:d.color+'22',color:d.color,border:'1.5px solid '+d.color}">
+              ↩ {{d.name}}
+            </button>
+          </div>
+          <button @click="restoreAll" class="btn-sm btn-gray text-xs px-3 py-1.5 whitespace-nowrap">全て復元</button>
+        </div>
+
+        <div class="mb-4">
+          <div class="text-xs font-bold text-slate-500 mb-2">構成比ビジュアル</div>
+          <div class="flex h-5 rounded-full overflow-hidden gap-0.5">
+            <div v-for="item in activeItems" :key="item.id"
+              :style="{width:item.ratio+'%',background:item.color}"
+              class="transition-all duration-500" :title="item.name+': '+item.ratio+'%'"></div>
+          </div>
+          <div class="flex flex-wrap gap-2 mt-2">
+            <div v-for="item in activeItems" :key="item.id" class="flex items-center gap-1 text-xs text-slate-600">
+              <span class="color-dot" :style="{background:item.color}"></span>{{item.name}}
+            </div>
+          </div>
+        </div>
+
+        <div class="flex flex-wrap gap-2 mb-4">
+          <button @click="equalizeRatios"  class="btn-secondary btn-sm px-3 py-2">⚖️ 均等割り</button>
+          <button @click="autoCalcUnits"   class="btn-secondary btn-sm px-3 py-2">🔄 数量自動計算</button>
+          <button @click="autoCalcRatios"  class="btn-secondary btn-sm px-3 py-2">📊 構成比を数量から計算</button>
+          <button @click="resetSort"       class="btn-gray btn-sm px-3 py-2">↺ 並び順リセット</button>
+        </div>
+
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead>
+              <tr class="bg-slate-50">
+                <th class="px-2 py-2.5 w-10 rounded-l-xl"><span class="text-xs text-slate-400 font-bold">削除</span></th>
+                <th class="text-left px-3 py-2.5 sort-th" @click="setSort('name')">
+                  <div class="flex items-center gap-1"><span class="font-bold text-slate-600">商品名</span>
+                    <span class="sort-icon"><span :class="sortKey==='name'&&sortDir==='asc'?'on':''">▲</span><span :class="sortKey==='name'&&sortDir==='desc'?'on':''">▼</span></span>
+                  </div>
+                </th>
+                <th class="text-center px-3 py-2.5 sort-th" @click="setSort('price')">
+                  <div class="flex items-center justify-center gap-1"><span class="font-bold text-slate-600">税抜単価</span>
+                    <span class="sort-icon"><span :class="sortKey==='price'&&sortDir==='asc'?'on':''">▲</span><span :class="sortKey==='price'&&sortDir==='desc'?'on':''">▼</span></span>
+                  </div>
+                </th>
+                <th class="text-center px-3 py-2.5 sort-th" @click="setSort('priceInc')">
+                  <div class="flex items-center justify-center gap-1"><span class="font-bold text-slate-600">税込単価</span>
+                    <span class="sort-icon"><span :class="sortKey==='priceInc'&&sortDir==='asc'?'on':''">▲</span><span :class="sortKey==='priceInc'&&sortDir==='desc'?'on':''">▼</span></span>
+                  </div>
+                </th>
+                <th class="text-center px-3 py-2.5 sort-th" @click="setSort('ratio')">
+                  <div class="flex items-center justify-center gap-1"><span class="font-bold text-slate-600">構成比(%)</span>
+                    <span class="sort-icon"><span :class="sortKey==='ratio'&&sortDir==='asc'?'on':''">▲</span><span :class="sortKey==='ratio'&&sortDir==='desc'?'on':''">▼</span></span>
+                  </div>
+                </th>
+                <th class="text-center px-3 py-2.5 sort-th" @click="setSort('targetUnits')">
+                  <div class="flex items-center justify-center gap-1"><span class="font-bold text-slate-600">目標数(個)</span>
+                    <span class="sort-icon"><span :class="sortKey==='targetUnits'&&sortDir==='asc'?'on':''">▲</span><span :class="sortKey==='targetUnits'&&sortDir==='desc'?'on':''">▼</span></span>
+                  </div>
+                </th>
+                <th class="text-center px-3 py-2.5 sort-th" @click="setSort('targetSales')">
+                  <div class="flex items-center justify-center gap-1"><span class="font-bold text-slate-600">目標売上</span>
+                    <span class="sort-icon"><span :class="sortKey==='targetSales'&&sortDir==='asc'?'on':''">▲</span><span :class="sortKey==='targetSales'&&sortDir==='desc'?'on':''">▼</span></span>
+                  </div>
+                </th>
+                <th class="text-center px-3 py-2.5 rounded-r-xl sort-th" @click="setSort('achieveRate')">
+                  <div class="flex items-center justify-center gap-1"><span class="font-bold text-slate-600">達成率目安</span>
+                    <span class="sort-icon"><span :class="sortKey==='achieveRate'&&sortDir==='asc'?'on':''">▲</span><span :class="sortKey==='achieveRate'&&sortDir==='desc'?'on':''">▼</span></span>
+                  </div>
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="item in sortedActiveItems" :key="item.id"
+                class="border-b border-slate-100 hover:bg-orange-50 transition-all"
+                :class="{'row-deleting':deletingId===item.id}">
+                <td class="px-2 py-2 text-center">
+                  <button class="row-del-btn" @click="deleteItem(item.id)" title="この商品を削除">✕</button>
+                </td>
+                <td class="px-3 py-2">
+                  <div class="flex items-center gap-2">
+                    <span class="color-dot" :style="{background:item.color}"></span>
+                    <span class="font-bold text-slate-800 text-xs">{{item.name}}</span>
+                  </div>
+                </td>
+                <td class="px-3 py-2 text-center text-xs font-bold text-slate-700">{{item.price}}円</td>
+                <td class="px-3 py-2 text-center text-xs text-slate-500">{{item.priceInc}}円</td>
+                <td class="px-3 py-2">
+                  <div class="input-wrap">
+                    <input v-model.number="item.ratio" type="number" class="input-field text-center py-1.5 pr-6 text-sm" min="0" max="100" step="0.1" style="min-width:75px" placeholder="" />
+                    <span class="input-unit text-xs">%</span>
+                  </div>
+                </td>
+                <td class="px-3 py-2">
+                  <div class="input-wrap">
+                    <input v-model.number="item.targetUnits" type="number" class="input-field text-center py-1.5 pr-6 text-sm" min="0" style="min-width:75px" placeholder="" />
+                    <span class="input-unit text-xs">個</span>
+                  </div>
+                </td>
+                <td class="px-3 py-2 text-center font-bold text-slate-700 text-xs">{{fmtYen(item.price*item.targetUnits)}}</td>
+                <td class="px-3 py-2">
+                  <div class="flex items-center gap-2">
+                    <div class="progress-bar flex-1" style="height:8px">
+                      <div class="progress-fill" :style="{width:Math.min(100,(item.price*item.targetUnits/totalBudget*100)||0)+'%'}"></div>
+                    </div>
+                    <span class="text-xs font-bold text-slate-500 w-10 text-right">
+                      {{totalBudget>0?((item.price*item.targetUnits/totalBudget)*100).toFixed(1):0}}%
+                    </span>
+                  </div>
+                </td>
+              </tr>
+              <tr v-if="activeItems.length===0">
+                <td colspan="8" class="px-3 py-8 text-center text-slate-400">
+                  <div class="text-3xl mb-2">🗑️</div>
+                  <div class="font-bold">全商品が削除されています</div>
+                  <div class="text-xs mt-1">上の復元バナーから商品を戻してください</div>
+                </td>
+              </tr>
+            </tbody>
+            <tfoot v-if="activeItems.length>0">
+              <tr class="bg-orange-50 font-black">
+                <td class="px-2 py-3 rounded-l-xl"></td>
+                <td class="px-3 py-3 text-orange-700" colspan="3">合計（{{activeItems.length}}品）</td>
+                <td class="px-3 py-3 text-center" :class="Math.abs(totalRatio-100)<0.1?'text-green-700':'text-red-600'">{{totalRatio.toFixed(1)}}%</td>
+                <td class="px-3 py-3 text-center text-orange-700">{{totalUnits.toLocaleString()}}個</td>
+                <td class="px-3 py-3 text-center text-orange-700">{{fmtYen(totalSales)}}</td>
+                <td class="px-3 py-3 rounded-r-xl text-center text-orange-700">{{totalBudget>0?((totalSales/totalBudget)*100).toFixed(1):0}}%</td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+
+        <div v-if="Math.abs(totalRatio-100)>=0.1&&totalRatio>0" class="alert-box alert-error mt-4">
+          <span>⚠️</span> 構成比の合計が{{totalRatio.toFixed(1)}}%です。100%になるよう調整してください。（差分: {{(totalRatio-100).toFixed(1)}}%）
+        </div>
+        <div v-if="Math.abs(totalRatio-100)<0.1&&totalRatio>0" class="alert-box alert-success mt-4">
+          <span>✅</span> 構成比の合計が100%です！
+        </div>
+      </div>
+      <div class="flex justify-between">
+        <button @click="currentStep=0" class="btn-secondary px-6 py-3">← 戻る</button>
+        <button @click="nextStep(1)" class="btn-primary text-base px-8 py-3">次へ：売場レイアウト →</button>
+      </div>
+    </div>
+
+    <!-- ============================================================
+         STEP 2: 売場レイアウト
+    ============================================================ -->
+    <div v-show="currentStep===2" class="fade-in space-y-6">
+      <div class="card p-6">
+        <div class="section-header mb-1">🗺️ STEP 3：売場レイアウト設定</div>
+        <p class="text-slate-500 text-sm mb-4">4×4の16フェイスに商品をドラッグ＆ドロップで配置。各フェイスに仕込み数も入力できます。朝・昼・夕の3パターン設定可能です。</p>
+
+        <div v-if="deletedItems.length>0" class="alert-box alert-warn mb-4">
+          <span>⚠️</span>
+          <span>削除済みの商品（{{deletedItems.map(d=>d.name).join('、')}}）はパレットに表示されません。STEP2で復元できます。</span>
+        </div>
+
+        <!-- タブ -->
+        <div class="flex flex-wrap gap-2 mb-4 no-print">
+          <button v-for="(t,i) in timeTabs" :key="i" @click="activeTab=i"
+            :class="['tab-btn',activeTab===i?'active':'inactive']">{{t.icon}} {{t.label}}</button>
+          <button @click="copyToAll" class="tab-btn inactive ml-auto">📋 全パターンに適用</button>
+        </div>
+
+        <!-- ========================================
+             仕込み数一括セットパネル
+        ======================================== -->
+        <div class="bulk-stock-panel mb-5 no-print">
+          <div class="flex items-center gap-2 mb-3">
+            <span class="text-lg">📦</span>
+            <span class="font-black text-teal-800 text-base">仕込み数 一括セット</span>
+            <span class="text-xs text-teal-600 font-medium">配置済みフェイスの仕込み数をまとめて設定します</span>
+          </div>
+
+          <!-- 入力行 -->
+          <div class="flex flex-wrap items-end gap-3 mb-3">
+            <div>
+              <label class="block text-xs font-bold text-teal-700 mb-1">仕込み数</label>
+              <div class="input-wrap">
+                <input
+                  v-model.number="bulkStockQty"
+                  type="number" min="0"
+                  class="input-field pr-8 text-center font-black text-lg"
+                  style="width:110px;border-color:#5eead4"
+                  placeholder="0"
+                  @keyup.enter="applyBulkStock"
+                />
+                <span class="input-unit">個</span>
+              </div>
+            </div>
+
+            <!-- 適用スコープ選択 -->
+            <div>
+              <label class="block text-xs font-bold text-teal-700 mb-1">適用範囲</label>
+              <div class="flex gap-1.5">
+                <button
+                  v-for="sc in bulkStockScopes" :key="sc.value"
+                  @click="bulkStockScope=sc.value"
+                  :class="['scope-btn', bulkStockScope===sc.value?'selected':'']">
+                  {{sc.label}}
+                </button>
+              </div>
+            </div>
+
+            <!-- 実行ボタン -->
+            <button @click="applyBulkStock" class="btn-sm btn-teal px-5 py-2.5 text-sm flex items-center gap-2">
+              <span>⚡</span> 一括反映
+            </button>
+            <!-- クリアボタン -->
+            <button @click="clearBulkStock" class="btn-sm btn-gray px-4 py-2.5 text-sm flex items-center gap-2">
+              <span>🗑️</span> 仕込みをクリア
+            </button>
+          </div>
+
+          <!-- 適用範囲の説明 -->
+          <div class="flex flex-wrap gap-2 text-xs text-teal-700">
+            <span class="bg-teal-50 border border-teal-200 rounded-lg px-2.5 py-1">
+              <strong>現パターン：</strong>現在表示中の{{timeTabs[activeTab].label}}のみ反映
+            </span>
+            <span class="bg-teal-50 border border-teal-200 rounded-lg px-2.5 py-1">
+              <strong>全パターン：</strong>朝・昼・夕すべてに反映
+            </span>
+            <span class="bg-amber-50 border border-amber-200 rounded-lg px-2.5 py-1 text-amber-700">
+              ⚠️ 商品が配置されていないフェイスには反映されません
+            </span>
+          </div>
+
+          <!-- 現在の仕込み数サマリー -->
+          <div class="mt-3 pt-3 border-t border-teal-200">
+            <div class="text-xs font-bold text-teal-700 mb-2">📊 現パターン（{{timeTabs[activeTab].label}}）の仕込み数サマリー</div>
+            <div class="flex flex-wrap gap-2">
+              <template v-for="item in activeItems" :key="item.id">
+                <div v-if="countInGrid(item.id)>0"
+                  class="flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-lg font-bold"
+                  :style="{background:item.color+'18',border:'1.5px solid '+item.color,color:item.color}">
+                  <span>{{item.name}}</span>
+                  <span class="bg-white rounded px-1.5 py-0.5 text-slate-700">
+                    {{getTotalStockByTab(item.id,activeTab)}}個
+                  </span>
+                  <span class="text-xs opacity-70">/ {{countInGrid(item.id)}}F</span>
+                </div>
+              </template>
+              <div v-if="getTotalStockAllItems(activeTab)===0" class="text-teal-500 text-xs">
+                まだ仕込み数が入力されていません
+              </div>
+            </div>
+            <div class="mt-2 text-xs font-black text-teal-800">
+              合計仕込み数：{{getTotalStockAllItems(activeTab)}}個
+              <span class="ml-3 font-bold text-teal-600">
+                （売上見込：{{fmtYen(getTotalStockSalesByTab(activeTab))}}）
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <!-- 商品パレット -->
+          <div class="layout-section no-print">
+            <div class="font-bold text-slate-700 mb-3 flex items-center gap-2">
+              🧩 商品パレット
+              <span class="text-xs text-slate-400 font-normal">（ドラッグして配置）</span>
+            </div>
+            <div v-if="activeItems.length===0" class="text-center text-slate-400 text-xs py-4">
+              商品がありません。STEP2で復元してください。
+            </div>
+            <div v-else class="flex flex-col gap-1.5 max-h-80 overflow-y-auto pr-1">
+              <div v-for="item in activeItems" :key="item.id"
+                class="item-chip"
+                :style="{borderColor:item.color,background:item.color+'18'}"
+                draggable="true"
+                @dragstart="onDragStart($event,item,'palette',null)">
+                <span class="color-dot" :style="{background:item.color}"></span>
+                <span class="text-xs flex-1">{{item.name}}</span>
+                <span class="text-slate-400 text-xs ml-auto">{{item.price}}円</span>
+              </div>
+            </div>
+            <div class="mt-4 pt-4 border-t border-slate-200">
+              <div class="font-bold text-slate-700 mb-2 text-sm">📊 配置済み集計（現パターン）</div>
+              <div class="space-y-1">
+                <template v-for="item in activeItems" :key="item.id">
+                  <div v-if="countInGrid(item.id)>0" class="flex items-center gap-2 text-xs">
+                    <span class="color-dot" :style="{background:item.color}"></span>
+                    <span class="flex-1 text-slate-600">{{item.name}}</span>
+                    <span class="font-bold text-slate-700">{{countInGrid(item.id)}}フェイス</span>
+                  </div>
+                </template>
+              </div>
+            </div>
+          </div>
+
+          <!-- グリッド -->
+          <div class="lg:col-span-2">
+            <div class="flex items-center justify-between mb-3 no-print">
+              <div class="font-bold text-slate-700 flex items-center gap-2">
+                {{timeTabs[activeTab].icon}} {{timeTabs[activeTab].label}}の売場レイアウト
+              </div>
+              <button @click="clearGrid" class="btn-sm btn-danger">🗑️ クリア</button>
+            </div>
+            <div class="flex items-center gap-1 mb-1 pl-8 no-print">
+              <div v-for="c in 4" :key="c" class="flex-1 text-center text-xs font-bold text-slate-400">列{{c}}</div>
+            </div>
+            <div class="flex gap-1">
+              <div class="flex flex-col gap-1 justify-around no-print">
+                <div v-for="r in 4" :key="r" class="text-xs font-bold text-slate-400 flex items-center" style="height:80px">行{{r}}</div>
+              </div>
+              <div class="layout-grid flex-1">
+                <div v-for="(cell,idx) in currentGrid" :key="idx"
+                  class="layout-cell"
+                  :class="{
+                    'has-item':cell!==null,
+                    'drag-over':dragOverCell===idx,
+                    'dragging':draggingFromCell===idx
+                  }"
+                  :style="cell?{background:getItem(cell).color,borderColor:getItem(cell).color}:{}"
+                  @dragover.prevent="dragOverCell=idx"
+                  @dragleave="dragOverCell=null"
+                  @drop="onDrop($event,idx)"
+                  @dragstart="cell?onDragStart($event,getItem(cell),'grid',idx):null"
+                  :draggable="cell!==null">
+                  <template v-if="cell">
+                    <div class="cell-remove-btn no-print" @click.stop="removeFromCell(idx)">✕</div>
+                    <div class="flex flex-col items-center gap-0.5 w-full px-1">
+                      <span class="text-white font-bold leading-tight text-center" style="font-size:9px;text-shadow:0 1px 2px rgba(0,0,0,.5)">{{getItem(cell).name}}</span>
+                      <div class="flex items-center gap-0.5 mt-1 w-full no-print" @click.stop>
+                        <span class="text-white" style="font-size:8px;opacity:.85;white-space:nowrap">仕込:</span>
+                        <input
+                          v-model.number="cellStocks[activeTab][idx].qty"
+                          type="number" min="0"
+                          class="w-full text-center font-black rounded text-orange-900"
+                          style="font-size:11px;padding:1px 2px;background:rgba(255,255,255,.9);border:none;outline:none;min-width:0"
+                          placeholder=""
+                          @click.stop @dragstart.stop />
+                        <span class="text-white" style="font-size:8px;opacity:.85">個</span>
+                      </div>
+                    </div>
+                  </template>
+                  <template v-else>
+                    <span class="text-slate-300 text-xl">＋</span>
+                  </template>
+                </div>
+              </div>
+            </div>
+            <div class="mt-4 p-3 bg-slate-50 rounded-xl no-print">
+              <div class="text-xs font-bold text-slate-500 mb-1">💡 操作方法</div>
+              <div class="flex flex-wrap gap-3 text-xs text-slate-500">
+                <span>🖱️ パレットからドラッグ→フェイスにドロップで配置</span>
+                <span>🔄 フェイス同士でドラッグ→移動</span>
+                <span>✕ 右上ボタンで削除</span>
+                <span>🔢 フェイス内の数値欄に仕込み数を入力</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 全パターンプレビュー -->
+        <div class="mt-6 pt-6 border-t border-slate-200">
+          <div class="font-bold text-slate-700 mb-4">👁️ 全パターンプレビュー</div>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div v-for="(t,ti) in timeTabs" :key="ti" class="layout-section">
+              <div class="flex items-center justify-between mb-2">
+                <div class="font-bold text-slate-600 text-sm">{{t.icon}} {{t.label}}</div>
+                <div class="text-xs text-slate-500 font-bold">
+                  計{{getTotalStockAllItems(ti)}}個 / {{fmtYen(getTotalStockSalesByTab(ti))}}
+                </div>
+              </div>
+              <div class="grid gap-1" style="grid-template-columns:repeat(4,1fr)">
+                <div v-for="(cell,idx) in layouts[ti]" :key="idx"
+                  class="rounded flex flex-col items-center justify-center p-0.5"
+                  style="aspect-ratio:1;min-height:36px"
+                  :style="cell?{background:getItem(cell).color}:{background:'#f1f5f9'}">
+                  <span v-if="cell" style="font-size:8px;color:#fff;font-weight:700;text-align:center;line-height:1.2;word-break:break-all">{{getItem(cell).name.slice(0,4)}}</span>
+                  <span v-if="cell&&cellStocks[ti][idx].qty" style="font-size:7px;color:rgba(255,255,255,.9);font-weight:700">{{cellStocks[ti][idx].qty}}個</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 最終サマリー -->
+      <div class="card p-6">
+        <div class="section-header mb-4">📋 予算計画サマリー</div>
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
+          <div class="bg-orange-50 rounded-xl p-4 text-center">
+            <div class="text-xl font-black text-orange-600">{{fmtYen(totalBudget)}}</div>
+            <div class="text-xs text-slate-500 mt-1">💰 合計目標金額</div>
+          </div>
+          <div class="bg-blue-50 rounded-xl p-4 text-center">
+            <div class="text-xl font-black text-blue-600">{{budget.dailyTargets.length}}日間</div>
+            <div class="text-xs text-slate-500 mt-1">📅 セール期間</div>
+          </div>
+          <div class="bg-green-50 rounded-xl p-4 text-center">
+            <div class="text-xl font-black text-green-600">{{totalUnits.toLocaleString()}}個</div>
+            <div class="text-xs text-slate-500 mt-1">🍗 合計販売目標数</div>
+          </div>
+          <div class="bg-purple-50 rounded-xl p-4 text-center">
+            <div class="text-xl font-black text-purple-600">{{activeItems.length}}種</div>
+            <div class="text-xs text-slate-500 mt-1">🧩 取扱単品数</div>
+          </div>
+        </div>
+        <div class="overflow-x-auto mb-4">
+          <table class="w-full text-sm">
+            <thead>
+              <tr class="bg-slate-50">
+                <th class="text-left px-3 py-2 font-bold text-slate-600 rounded-l-xl">商品</th>
+                <th class="text-center px-3 py-2 font-bold text-slate-600">税抜単価</th>
+                <th class="text-center px-3 py-2 font-bold text-slate-600">構成比</th>
+                <th class="text-center px-3 py-2 font-bold text-slate-600">目標数</th>
+                <th class="text-center px-3 py-2 font-bold text-slate-600">目標売上</th>
+                <th class="text-center px-3 py-2 font-bold text-slate-600 rounded-r-xl">朝/昼/夕フェイス数</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="item in activeItems" :key="item.id" class="border-b border-slate-100 hover:bg-slate-50">
+                <td class="px-3 py-2">
+                  <div class="flex items-center gap-2">
+                    <span class="color-dot" :style="{background:item.color}"></span>
+                    <span class="font-bold text-xs">{{item.name}}</span>
+                  </div>
+                </td>
+                <td class="px-3 py-2 text-center text-xs">{{item.price}}円</td>
+                <td class="px-3 py-2 text-center font-bold text-xs" :style="{color:item.color}">{{item.ratio}}%</td>
+                <td class="px-3 py-2 text-center font-bold text-xs">{{item.targetUnits.toLocaleString()}}個</td>
+                <td class="px-3 py-2 text-center font-bold text-xs">{{fmtYen(item.price*item.targetUnits)}}</td>
+                <td class="px-3 py-2 text-center">
+                  <span class="inline-flex gap-1 text-xs">
+                    <span class="bg-yellow-100 text-yellow-700 px-1.5 py-0.5 rounded font-bold">朝{{countInGridByTab(item.id,0)}}</span>
+                    <span class="bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded font-bold">昼{{countInGridByTab(item.id,1)}}</span>
+                    <span class="bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded font-bold">夕{{countInGridByTab(item.id,2)}}</span>
+                  </span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="flex flex-wrap gap-3 justify-end no-print">
+          <button @click="currentStep=1" class="btn-secondary px-6 py-3">← 戻る</button>
+          <button @click="saveAll" class="btn-primary px-8 py-3">💾 計画を保存する</button>
+          <button @click="printAll" class="btn-secondary px-6 py-3">🖨️ 全ページ印刷</button>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /main -->
+
+  <!-- ============================================================
+       印刷専用エリア
+  ============================================================ -->
+  <div id="print-area">
+
+    <!-- 印刷P1: 販売目標金額 -->
+    <div class="print-page">
+      <div style="background:#f97316;color:#fff;padding:12px 16px;border-radius:8px;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between">
+        <div>
+          <div style="font-size:18px;font-weight:900">🍗 揚げ物セール予算管理</div>
+          <div style="font-size:11px;opacity:.85">セブン-イレブン 揚げ物惣菜 売場予算プランナー</div>
+        </div>
+        <div style="text-align:right;font-size:11px">
+          <div style="font-weight:700">{{budget.saleName||'（未設定）'}}</div>
+          <div>{{budget.storeName}} ／ {{budget.startDate}}〜{{budget.endDate}}</div>
+        </div>
+      </div>
+      <div style="font-size:15px;font-weight:900;color:#1e293b;margin-bottom:8px;border-left:4px solid #f97316;padding-left:8px">💰 STEP 1：販売目標金額</div>
+      <table style="width:100%;border-collapse:collapse;font-size:11px;margin-bottom:12px">
+        <thead>
+          <tr style="background:#f97316;color:#fff">
+            <th style="padding:6px 8px;text-align:left;border:1px solid #e2e8f0">日付</th>
+            <th style="padding:6px 8px;text-align:right;border:1px solid #e2e8f0">基準値（円）</th>
+            <th style="padding:6px 8px;text-align:center;border:1px solid #e2e8f0">目標比率</th>
+            <th style="padding:6px 8px;text-align:right;border:1px solid #e2e8f0">目標金額（円）</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="(d,i) in budget.dailyTargets" :key="i" :style="{background:i%2===0?'#fff':'#fafafa'}">
+            <td style="padding:5px 8px;border:1px solid #e2e8f0;font-weight:700">{{d.label}}</td>
+            <td style="padding:5px 8px;border:1px solid #e2e8f0;text-align:right">{{(d.baseAmount||0).toLocaleString()}}</td>
+            <td style="padding:5px 8px;border:1px solid #e2e8f0;text-align:center;font-weight:700;color:#f97316">{{d.ratio}}%</td>
+            <td style="padding:5px 8px;border:1px solid #e2e8f0;text-align:right;font-weight:900;color:#ea580c">{{(d.amount||0).toLocaleString()}}</td>
+          </tr>
+        </tbody>
+        <tfoot>
+          <tr style="background:#fff7ed;font-weight:900">
+            <td style="padding:6px 8px;border:1px solid #e2e8f0" colspan="3">📈 合計目標金額</td>
+            <td style="padding:6px 8px;border:1px solid #e2e8f0;text-align:right;color:#ea580c;font-size:14px">{{totalBudget.toLocaleString()}}円</td>
+          </tr>
+        </tfoot>
+      </table>
+      <div style="display:flex;gap:12px">
+        <div style="flex:1;background:#fff7ed;border:1.5px solid #fed7aa;border-radius:8px;padding:10px;text-align:center">
+          <div style="font-size:10px;color:#94a3b8;margin-bottom:2px">合計目標金額</div>
+          <div style="font-size:20px;font-weight:900;color:#ea580c">{{totalBudget.toLocaleString()}}円</div>
+        </div>
+        <div style="flex:1;background:#eff6ff;border:1.5px solid #bfdbfe;border-radius:8px;padding:10px;text-align:center">
+          <div style="font-size:10px;color:#94a3b8;margin-bottom:2px">セール期間</div>
+          <div style="font-size:20px;font-weight:900;color:#2563eb">{{budget.dailyTargets.length}}日間</div>
+        </div>
+        <div style="flex:1;background:#f0fdf4;border:1.5px solid #bbf7d0;border-radius:8px;padding:10px;text-align:center">
+          <div style="font-size:10px;color:#94a3b8;margin-bottom:2px">日平均目標</div>
+          <div style="font-size:20px;font-weight:900;color:#16a34a">{{Math.round(totalBudget/(budget.dailyTargets.length||1)).toLocaleString()}}円</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 印刷P2: 単品販売目標数・構成比 -->
+    <div class="print-page">
+      <div style="background:#f97316;color:#fff;padding:12px 16px;border-radius:8px;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between">
+        <div>
+          <div style="font-size:18px;font-weight:900">🍗 揚げ物セール予算管理</div>
+          <div style="font-size:11px;opacity:.85">セブン-イレブン 揚げ物惣菜 売場予算プランナー</div>
+        </div>
+        <div style="text-align:right;font-size:11px">
+          <div style="font-weight:700">{{budget.saleName||'（未設定）'}}</div>
+          <div>{{budget.storeName}} ／ {{budget.startDate}}〜{{budget.endDate}}</div>
+        </div>
+      </div>
+      <div style="font-size:15px;font-weight:900;color:#1e293b;margin-bottom:8px;border-left:4px solid #f97316;padding-left:8px">🧮 STEP 2：単品販売目標数・構成比</div>
+      <div style="margin-bottom:10px">
+        <div style="font-size:10px;font-weight:700;color:#64748b;margin-bottom:4px">構成比ビジュアル</div>
+        <div style="display:flex;height:16px;border-radius:99px;overflow:hidden;gap:1px">
+          <div v-for="item in activeItems" :key="item.id" :style="{width:item.ratio+'%',background:item.color,flexShrink:0}"></div>
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:4px">
+          <div v-for="item in activeItems" :key="item.id" style="display:flex;align-items:center;gap:3px;font-size:9px;color:#475569">
+            <span :style="{width:'8px',height:'8px',borderRadius:'50%',background:item.color,display:'inline-block',flexShrink:0}"></span>
+            {{item.name}}
+          </div>
+        </div>
+      </div>
+      <table style="width:100%;border-collapse:collapse;font-size:10px;margin-bottom:12px">
+        <thead>
+          <tr style="background:#f97316;color:#fff">
+            <th style="padding:5px 6px;text-align:left;border:1px solid #e2e8f0">商品名</th>
+            <th style="padding:5px 6px;text-align:right;border:1px solid #e2e8f0">税抜単価</th>
+            <th style="padding:5px 6px;text-align:right;border:1px solid #e2e8f0">税込単価</th>
+            <th style="padding:5px 6px;text-align:center;border:1px solid #e2e8f0">構成比</th>
+            <th style="padding:5px 6px;text-align:right;border:1px solid #e2e8f0">目標数</th>
+            <th style="padding:5px 6px;text-align:right;border:1px solid #e2e8f0">目標売上(税抜)</th>
+            <th style="padding:5px 6px;text-align:center;border:1px solid #e2e8f0">朝/昼/夕</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="(item,i) in activeItems" :key="item.id" :style="{background:i%2===0?'#fff':'#fafafa'}">
+            <td style="padding:4px 6px;border:1px solid #e2e8f0">
+              <span :style="{display:'inline-block',width:'8px',height:'8px',borderRadius:'50%',background:item.color,marginRight:'4px',verticalAlign:'middle'}"></span>
+              <span style="font-weight:700">{{item.name}}</span>
+            </td>
+            <td style="padding:4px 6px;border:1px solid #e2e8f0;text-align:right">{{item.price}}円</td>
+            <td style="padding:4px 6px;border:1px solid #e2e8f0;text-align:right;color:#64748b">{{item.priceInc}}円</td>
+            <td style="padding:4px 6px;border:1px solid #e2e8f0;text-align:center;font-weight:700" :style="{color:item.color}">{{item.ratio}}%</td>
+            <td style="padding:4px 6px;border:1px solid #e2e8f0;text-align:right;font-weight:700">{{item.targetUnits.toLocaleString()}}個</td>
+            <td style="padding:4px 6px;border:1px solid #e2e8f0;text-align:right;font-weight:700">{{(item.price*item.targetUnits).toLocaleString()}}円</td>
+            <td style="padding:4px 6px;border:1px solid #e2e8f0;text-align:center;font-size:9px">
+              朝{{countInGridByTab(item.id,0)}} / 昼{{countInGridByTab(item.id,1)}} / 夕{{countInGridByTab(item.id,2)}}
+            </td>
+          </tr>
+        </tbody>
+        <tfoot>
+          <tr style="background:#fff7ed;font-weight:900">
+            <td style="padding:5px 6px;border:1px solid #e2e8f0" colspan="3">合計（{{activeItems.length}}品）</td>
+            <td style="padding:5px 6px;border:1px solid #e2e8f0;text-align:center" :style="{color:Math.abs(totalRatio-100)<0.1?'#16a34a':'#dc2626'}">{{totalRatio.toFixed(1)}}%</td>
+            <td style="padding:5px 6px;border:1px solid #e2e8f0;text-align:right;color:#ea580c">{{totalUnits.toLocaleString()}}個</td>
+            <td style="padding:5px 6px;border:1px solid #e2e8f0;text-align:right;color:#ea580c">{{totalSales.toLocaleString()}}円</td>
+            <td style="padding:5px 6px;border:1px solid #e2e8f0"></td>
+          </tr>
+        </tfoot>
+      </table>
+      <div style="display:flex;gap:12px">
+        <div style="flex:1;background:#fff7ed;border:1.5px solid #fed7aa;border-radius:8px;padding:10px;text-align:center">
+          <div style="font-size:10px;color:#94a3b8;margin-bottom:2px">合計目標金額</div>
+          <div style="font-size:18px;font-weight:900;color:#ea580c">{{totalBudget.toLocaleString()}}円</div>
+        </div>
+        <div style="flex:1;background:#f0fdf4;border:1.5px solid #bbf7d0;border-radius:8px;padding:10px;text-align:center">
+          <div style="font-size:10px;color:#94a3b8;margin-bottom:2px">合計販売目標数</div>
+          <div style="font-size:18px;font-weight:900;color:#16a34a">{{totalUnits.toLocaleString()}}個</div>
+        </div>
+        <div style="flex:1;background:#eff6ff;border:1.5px solid #bfdbfe;border-radius:8px;padding:10px;text-align:center">
+          <div style="font-size:10px;color:#94a3b8;margin-bottom:2px">合計目標売上(税抜)</div>
+          <div style="font-size:18px;font-weight:900;color:#2563eb">{{totalSales.toLocaleString()}}円</div>
+        </div>
+        <div style="flex:1;background:#fdf4ff;border:1.5px solid #e9d5ff;border-radius:8px;padding:10px;text-align:center">
+          <div style="font-size:10px;color:#94a3b8;margin-bottom:2px">取扱単品数</div>
+          <div style="font-size:18px;font-weight:900;color:#9333ea">{{activeItems.length}}種</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 印刷P3〜5: 売場レイアウト（朝・昼・夕） -->
+    <div v-for="(t,ti) in timeTabs" :key="'pl-'+ti" class="print-page">
+      <div style="background:#f97316;color:#fff;padding:12px 16px;border-radius:8px;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between">
+        <div>
+          <div style="font-size:18px;font-weight:900">🍗 揚げ物セール予算管理</div>
+          <div style="font-size:11px;opacity:.85">セブン-イレブン 揚げ物惣菜 売場予算プランナー</div>
+        </div>
+        <div style="text-align:right;font-size:11px">
+          <div style="font-weight:700">{{budget.saleName||'（未設定）'}}</div>
+          <div>{{budget.storeName}} ／ {{budget.startDate}}〜{{budget.endDate}}</div>
+        </div>
+      </div>
+      <div style="font-size:15px;font-weight:900;color:#1e293b;margin-bottom:8px;border-left:4px solid #f97316;padding-left:8px">
+        🗺️ STEP 3：売場レイアウト ― {{t.icon}} {{t.label}}
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:14px">
+        <div v-for="(cell,idx) in layouts[ti]" :key="idx"
+          style="border-radius:8px;min-height:90px;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:6px;text-align:center;border:2px solid"
+          :style="cell
+            ?{background:getItem(cell).color,borderColor:getItem(cell).color,color:'#fff'}
+            :{background:'#f8fafc',borderColor:'#cbd5e1',color:'#94a3b8',borderStyle:'dashed'}">
+          <template v-if="cell">
+            <div style="font-size:10px;font-weight:900;line-height:1.3;word-break:break-all;text-shadow:0 1px 2px rgba(0,0,0,.4)">{{getItem(cell).name}}</div>
+            <div style="font-size:9px;margin-top:2px;opacity:.9">{{getItem(cell).price}}円</div>
+            <div style="font-size:10px;font-weight:900;margin-top:4px;background:rgba(255,255,255,.25);border-radius:4px;padding:2px 6px">
+              仕込: {{cellStocks[ti][idx].qty||0}}個
+            </div>
+          </template>
+          <template v-else>
+            <span style="font-size:18px;color:#cbd5e1">＋</span>
+          </template>
+        </div>
+      </div>
+      <div style="font-size:12px;font-weight:700;color:#1e293b;margin-bottom:6px">配置商品・仕込み数一覧</div>
+      <table style="width:100%;border-collapse:collapse;font-size:10px;margin-bottom:10px">
+        <thead>
+          <tr style="background:#f97316;color:#fff">
+            <th style="padding:5px 8px;text-align:left;border:1px solid #e2e8f0">商品名</th>
+            <th style="padding:5px 8px;text-align:center;border:1px solid #e2e8f0">税抜単価</th>
+            <th style="padding:5px 8px;text-align:center;border:1px solid #e2e8f0">フェイス数</th>
+            <th style="padding:5px 8px;text-align:center;border:1px solid #e2e8f0">仕込み数合計</th>
+            <th style="padding:5px 8px;text-align:right;border:1px solid #e2e8f0">仕込み売上(税抜)</th>
+          </tr>
+        </thead>
+        <tbody>
+          <template v-for="(item,i) in activeItems" :key="item.id">
+            <tr v-if="countInGridByTab(item.id,ti)>0" :style="{background:i%2===0?'#fff':'#fafafa'}">
+              <td style="padding:4px 8px;border:1px solid #e2e8f0">
+                <span :style="{display:'inline-block',width:'8px',height:'8px',borderRadius:'50%',background:item.color,marginRight:'4px',verticalAlign:'middle'}"></span>
+                <span style="font-weight:700">{{item.name}}</span>
+              </td>
+              <td style="padding:4px 8px;border:1px solid #e2e8f0;text-align:center">{{item.price}}円</td>
+              <td style="padding:4px 8px;border:1px solid #e2e8f0;text-align:center;font-weight:700">{{countInGridByTab(item.id,ti)}}フェイス</td>
+              <td style="padding:4px 8px;border:1px solid #e2e8f0;text-align:center;font-weight:900;color:#ea580c">{{getTotalStockByTab(item.id,ti)}}個</td>
+              <td style="padding:4px 8px;border:1px solid #e2e8f0;text-align:right;font-weight:700">{{(item.price*getTotalStockByTab(item.id,ti)).toLocaleString()}}円</td>
+            </tr>
+          </template>
+        </tbody>
+        <tfoot>
+          <tr style="background:#fff7ed;font-weight:900">
+            <td style="padding:5px 8px;border:1px solid #e2e8f0" colspan="3">合計</td>
+            <td style="padding:5px 8px;border:1px solid #e2e8f0;text-align:center;color:#ea580c">{{getTotalStockAllItems(ti)}}個</td>
+            <td style="padding:5px 8px;border:1px solid #e2e8f0;text-align:right;color:#ea580c">{{getTotalStockSalesByTab(ti).toLocaleString()}}円</td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+
+  </div><!-- /print-area -->
+
+  <!-- Toast -->
+  <div id="toast-area" v-if="toast.show" class="fixed bottom-6 right-6 z-50 fade-in no-print">
+    <div :class="['px-5 py-3 rounded-xl shadow-xl font-bold text-sm flex items-center gap-2',
+      toast.type==='success'?'bg-green-500 text-white':
+      toast.type==='error'?'bg-red-500 text-white':'bg-slate-800 text-white']">
+      <span>{{toast.icon}}</span> {{toast.message}}
+    </div>
+  </div>
+
+</div><!-- /app -->
+
+<script>
+const { createApp, ref, computed, watch, onMounted, reactive } = Vue;
+
+const ITEM_COLORS = [
+  '#f97316','#ef4444','#eab308','#22c55e','#3b82f6',
+  '#8b5cf6','#ec4899','#14b8a6','#f59e0b','#6366f1',
+  '#84cc16','#06b6d4','#a855f7','#10b981','#f43f5e',
+  '#0ea5e9','#d946ef','#fb923c','#4ade80','#60a5fa','#c084fc'
+];
+
+const DEFAULT_ITEMS = [
+  { id:1,  name:'からあげ棒',                      price:184, priceInc:198.72, ratio:0, targetUnits:0 },
+  { id:2,  name:'黒いすき焼き春巻',                price:139, priceInc:150.12, ratio:0, targetUnits:0 },
+  { id:3,  name:'えびとイカの海鮮春巻',            price:167, priceInc:180.36, ratio:0, targetUnits:0 },
+  { id:4,  name:'北海道産じゃがいもの牛肉コロッケ',price:100, priceInc:108.00, ratio:0, targetUnits:0 },
+  { id:5,  name:'若鶏のからあげ（もも）5個入り',   price:280, priceInc:302.40, ratio:0, targetUnits:0 },
+  { id:6,  name:'若鶏のからあげ（むね）5個入り',   price:280, priceInc:302.40, ratio:0, targetUnits:0 },
+  { id:7,  name:'揚げ鶏',                          price:232, priceInc:250.56, ratio:0, targetUnits:0 },
+  { id:8,  name:'ななチキ',                        price:232, priceInc:250.56, ratio:0, targetUnits:0 },
+  { id:9,  name:'BIGポークフランク',               price:198, priceInc:213.84, ratio:0, targetUnits:0 },
+  { id:10, name:'アメリカンドッグ',                price:139, priceInc:150.12, ratio:0, targetUnits:0 },
+  { id:11, name:'山賊焼',                          price:278, priceInc:300.24, ratio:0, targetUnits:0 },
+  { id:12, name:'ささみ揚げ（梅しそ）',            price:176, priceInc:190.08, ratio:0, targetUnits:0 },
+  { id:13, name:'五目春巻',                        price:112, priceInc:120.96, ratio:0, targetUnits:0 },
+  { id:14, name:'ザクチキ（魅惑のうま辛）',        price:232, priceInc:250.56, ratio:0, targetUnits:0 },
+  { id:15, name:'揚げたこ焼き6個入り',             price:396, priceInc:427.68, ratio:0, targetUnits:0 },
+  { id:16, name:'揚げたこ焼き3個入り',             price:198, priceInc:213.84, ratio:0, targetUnits:0 },
+  { id:17, name:'ハッシュポテト',                  price:112, priceInc:120.96, ratio:0, targetUnits:0 },
+  { id:18, name:'サクなげ（うま塩）5個入り',       price:240, priceInc:259.20, ratio:0, targetUnits:0 },
+  { id:19, name:'皮付きフライドポテト（しお味）',  price:278, priceInc:300.24, ratio:0, targetUnits:0 },
+  { id:20, name:'皮付きフライドポテトS（しお味）', price:139, priceInc:150.12, ratio:0, targetUnits:0 },
+  { id:21, name:'ジューシー粗挽きソーセージ',      price:150, priceInc:162.00, ratio:0, targetUnits:0 },
+].map((item, i) => ({ ...item, color: ITEM_COLORS[i % ITEM_COLORS.length] }));
+
+const RATIO_OPTIONS = [
+  { value:100, label:'100%（基準値通り）' },
+  { value:150, label:'150%（1.5倍）' },
+  { value:200, label:'200%（2倍）' },
+  { value:250, label:'250%（2.5倍）' },
+  { value:300, label:'300%（3倍）' },
+];
+
+const EMPTY_GRID   = () => Array(16).fill(null);
+const EMPTY_STOCKS = () => Array.from({length:3}, () => Array.from({length:16}, () => ({qty:0})));
+
+const DEFAULT_MORNING_GRID = [
+  12,  9, 10,  1,
+   7,  7,  8,  8,
+  11, 11, 14, 17,
+  15, 19,  4, 13,
+];
+const DEFAULT_LAYOUTS = () => [
+  [...DEFAULT_MORNING_GRID],
+  EMPTY_GRID(),
+  EMPTY_GRID(),
+];
+
+createApp({
+  setup() {
+
+    /* ---- State ---- */
+    const currentStep = ref(0);
+    const steps = [
+      { icon:'💰', label:'販売目標金額' },
+      { icon:'🧮', label:'単品目標・構成比' },
+      { icon:'🗺️', label:'売場レイアウト' },
+    ];
+    const timeTabs = [
+      { icon:'🌅', label:'朝' },
+      { icon:'☀️', label:'昼' },
+      { icon:'🌆', label:'夕' },
+    ];
+    const activeTab    = ref(0);
+    const ratioOptions = RATIO_OPTIONS;
+
+    const budget = reactive({
+      saleName:'', storeName:'', startDate:'', endDate:'', dailyTargets:[],
+    });
+
+    const items      = ref(JSON.parse(JSON.stringify(DEFAULT_ITEMS)));
+    const deletedIds = ref(new Set());
+    const deletingId = ref(null);
+
+    const layouts    = ref(DEFAULT_LAYOUTS());
+    const cellStocks = ref(EMPTY_STOCKS());
+
+    const errors = reactive({});
+    const bulkBase  = ref(null);
+    const bulkRatio = ref(100);
+
+    const sortKey = ref('');
+    const sortDir = ref('asc');
+
+    /* ---- 仕込み数一括セット ---- */
+    const bulkStockQty   = ref(null);   // 入力値（空欄スタート）
+    const bulkStockScope = ref('current'); // 'current' | 'all'
+    const bulkStockScopes = [
+      { value:'current', label:'現パターンのみ' },
+      { value:'all',     label:'全パターン（朝・昼・夕）' },
+    ];
+
+    const toast = reactive({ show:false, message:'', type:'success', icon:'✅' });
+
+    const dragItem         = ref(null);
+    const dragFromCell     = ref(null);
+    const dragFromSource   = ref(null);
+    const dragOverCell     = ref(null);
+    const draggingFromCell = ref(null);
+
+    /* ---- Computed ---- */
+    const activeItems = computed(() =>
+      items.value.filter(i => !deletedIds.value.has(i.id))
+    );
+    const deletedItems = computed(() =>
+      items.value.filter(i => deletedIds.value.has(i.id))
+    );
+
+    const totalBudget = computed(() => budget.dailyTargets.reduce((s,d) => s+(d.amount||0), 0));
+    const totalRatio  = computed(() => activeItems.value.reduce((s,i) => s+(parseFloat(i.ratio)||0), 0));
+    const totalUnits  = computed(() => activeItems.value.reduce((s,i) => s+(parseInt(i.targetUnits)||0), 0));
+    const totalSales  = computed(() => activeItems.value.reduce((s,i) => s+(i.price*(i.targetUnits||0)), 0));
+    const currentGrid = computed(() => layouts.value[activeTab.value]);
+
+    const sortedActiveItems = computed(() => {
+      if (!sortKey.value) return activeItems.value;
+      const arr = [...activeItems.value];
+      arr.sort((a, b) => {
+        if (sortKey.value === 'name') {
+          const cmp = a.name.localeCompare(b.name, 'ja');
+          return sortDir.value === 'asc' ? cmp : -cmp;
+        }
+        let va, vb;
+        if (sortKey.value === 'targetSales') {
+          va = a.price * (a.targetUnits||0);
+          vb = b.price * (b.targetUnits||0);
+        } else if (sortKey.value === 'achieveRate') {
+          va = totalBudget.value > 0 ? (a.price*(a.targetUnits||0))/totalBudget.value : 0;
+          vb = totalBudget.value > 0 ? (b.price*(b.targetUnits||0))/totalBudget.value : 0;
+        } else {
+          va = parseFloat(a[sortKey.value])||0;
+          vb = parseFloat(b[sortKey.value])||0;
+        }
+        return sortDir.value === 'asc' ? va-vb : vb-va;
+      });
+      return arr;
+    });
+
+    /* ---- Watchers ---- */
+    watch([() => budget.startDate, () => budget.endDate], () => generateDailyTargets());
+
+    /* ---- Methods ---- */
+    function calcDailyAmount(d) {
+      d.amount = Math.round((d.baseAmount||0) * (d.ratio||100) / 100);
+    }
+
+    function generateDailyTargets() {
+      if (!budget.startDate || !budget.endDate) return;
+      const start = new Date(budget.startDate);
+      const end   = new Date(budget.endDate);
+      if (end < start) return;
+      const days = [];
+      const cur  = new Date(start);
+      const dayNames = ['日','月','火','水','木','金','土'];
+      while (cur <= end) {
+        const dateStr  = cur.toISOString().slice(0,10);
+        const existing = budget.dailyTargets.find(d => d.date === dateStr);
+        days.push({
+          date:       dateStr,
+          label:      `${cur.getMonth()+1}/${cur.getDate()}(${dayNames[cur.getDay()]})`,
+          baseAmount: existing ? existing.baseAmount : null,
+          ratio:      existing ? existing.ratio      : 100,
+          amount:     existing ? existing.amount     : 0,
+        });
+        cur.setDate(cur.getDate()+1);
+      }
+      budget.dailyTargets = days;
+    }
+
+    function applyBulk() {
+      budget.dailyTargets.forEach(d => {
+        d.baseAmount = bulkBase.value;
+        d.ratio      = bulkRatio.value;
+        calcDailyAmount(d);
+      });
+      showToast('全日に一括適用しました','success','⚡');
+    }
+
+    function fmtYen(v) {
+      if (!v && v!==0) return '¥0';
+      return '¥' + Math.round(v).toLocaleString();
+    }
+
+    /* ---- 仕込み数一括セット ---- */
+
+    // 指定タブの配置済みフェイスすべてに qty をセット
+    function applyStockToTab(tabIdx, qty) {
+      const grid = layouts.value[tabIdx];
+      grid.forEach((cell, idx) => {
+        if (cell !== null) {
+          cellStocks.value[tabIdx][idx].qty = qty;
+        }
+      });
+    }
+
+    function applyBulkStock() {
+      const qty = parseInt(bulkStockQty.value);
+      if (isNaN(qty) || qty < 0) {
+        showToast('0以上の整数を入力してください','error','⚠️');
+        return;
+      }
+
+      if (bulkStockScope.value === 'all') {
+        // 朝・昼・夕すべてに反映
+        for (let ti = 0; ti < 3; ti++) {
+          applyStockToTab(ti, qty);
+        }
+        showToast(`朝・昼・夕すべてに ${qty}個 を一括反映しました`, 'success', '📦');
+      } else {
+        // 現パターンのみ
+        applyStockToTab(activeTab.value, qty);
+        showToast(`${timeTabs[activeTab.value].label}パターンに ${qty}個 を一括反映しました`, 'success', '📦');
+      }
+    }
+
+    function clearBulkStock() {
+      const target = bulkStockScope.value === 'all' ? '朝・昼・夕すべて' : timeTabs[activeTab.value].label;
+      if (!confirm(`${target}の仕込み数をすべて0にクリアしますか？`)) return;
+
+      if (bulkStockScope.value === 'all') {
+        for (let ti = 0; ti < 3; ti++) {
+          applyStockToTab(ti, 0);
+        }
+        showToast('朝・昼・夕すべての仕込み数をクリアしました','info','🗑️');
+      } else {
+        applyStockToTab(activeTab.value, 0);
+        showToast(`${timeTabs[activeTab.value].label}の仕込み数をクリアしました`,'info','🗑️');
+      }
+    }
+
+    /* ---- 商品削除・復元 ---- */
+    function deleteItem(id) {
+      deletingId.value = id;
+      for (let ti = 0; ti < 3; ti++) {
+        const newGrid = [...layouts.value[ti]];
+        for (let idx = 0; idx < 16; idx++) {
+          if (newGrid[idx] === id) {
+            newGrid[idx] = null;
+            cellStocks.value[ti][idx].qty = 0;
+          }
+        }
+        layouts.value[ti] = newGrid;
+      }
+      setTimeout(() => {
+        deletedIds.value = new Set([...deletedIds.value, id]);
+        deletingId.value = null;
+        showToast(`「${getItemById(id).name}」を削除しました。復元バナーから戻せます。`,'info','🗑️');
+      }, 220);
+    }
+
+    function restoreItem(id) {
+      const newSet = new Set(deletedIds.value);
+      newSet.delete(id);
+      deletedIds.value = newSet;
+      showToast(`「${getItemById(id).name}」を復元しました`,'success','↩');
+    }
+
+    function restoreAll() {
+      deletedIds.value = new Set();
+      showToast('全商品を復元しました','success','↩');
+    }
+
+    /* ---- ソート ---- */
+    function setSort(key) {
+      if (sortKey.value === key) {
+        sortDir.value = sortDir.value === 'asc' ? 'desc' : 'asc';
+      } else {
+        sortKey.value = key;
+        sortDir.value = 'asc';
+      }
+    }
+    function resetSort() {
+      sortKey.value = '';
+      sortDir.value = 'asc';
+    }
+
+    /* ---- 構成比・数量 ---- */
+    function equalizeRatios() {
+      const n = activeItems.value.length;
+      if (n === 0) return;
+      const each = parseFloat((100/n).toFixed(1));
+      activeItems.value.forEach((item, i) => {
+        item.ratio = i === n-1
+          ? parseFloat((100 - each*(n-1)).toFixed(1))
+          : each;
+      });
+      showToast('均等割りしました','success','⚖️');
+    }
+
+    function autoCalcUnits() {
+      if (totalBudget.value===0) { showToast('先に販売目標金額を設定してください','error','⚠️'); return; }
+      activeItems.value.forEach(item => {
+        const targetSales = totalBudget.value * (item.ratio/100);
+        item.targetUnits  = item.price>0 ? Math.round(targetSales/item.price) : 0;
+      });
+      showToast('数量を自動計算しました','success','🔄');
+    }
+
+    function autoCalcRatios() {
+      if (totalUnits.value===0) { showToast('先に目標数を入力してください','error','⚠️'); return; }
+      activeItems.value.forEach(item => {
+        item.ratio = parseFloat(((item.targetUnits/totalUnits.value)*100).toFixed(1));
+      });
+      showToast('構成比を計算しました','success','📊');
+    }
+
+    /* ---- アイテム取得 ---- */
+    function getItem(id)     { return items.value.find(i => i.id===id) || {}; }
+    function getItemById(id) { return items.value.find(i => i.id===id) || {}; }
+
+    /* ---- グリッド集計 ---- */
+    function countInGrid(itemId) {
+      return currentGrid.value.filter(c => c===itemId).length;
+    }
+    function countInGridByTab(itemId, tabIdx) {
+      return layouts.value[tabIdx].filter(c => c===itemId).length;
+    }
+    function getTotalStockByTab(itemId, tabIdx) {
+      let total = 0;
+      layouts.value[tabIdx].forEach((cell,idx) => {
+        if (cell===itemId) total += (cellStocks.value[tabIdx][idx].qty||0);
+      });
+      return total;
+    }
+    function getTotalStockAllItems(tabIdx) {
+      return cellStocks.value[tabIdx].reduce((s,c) => s+(c.qty||0), 0);
+    }
+    function getTotalStockSalesByTab(tabIdx) {
+      let total = 0;
+      layouts.value[tabIdx].forEach((cell,idx) => {
+        if (cell) {
+          const item = getItem(cell);
+          total += (item.price||0) * (cellStocks.value[tabIdx][idx].qty||0);
+        }
+      });
+      return total;
+    }
+
+    /* ---- Drag & Drop ---- */
+    function onDragStart(e, item, source, cellIdx) {
+      dragItem.value       = item;
+      dragFromSource.value = source;
+      dragFromCell.value   = cellIdx;
+      if (cellIdx!==null) draggingFromCell.value = cellIdx;
+      e.dataTransfer.effectAllowed = 'move';
+    }
+
+    function onDrop(e, toIdx) {
+      e.preventDefault();
+      dragOverCell.value = null;
+      if (!dragItem.value) return;
+      const grid = [...layouts.value[activeTab.value]];
+      if (dragFromSource.value==='grid' && dragFromCell.value!==null) {
+        const fromVal = grid[dragFromCell.value];
+        const toVal   = grid[toIdx];
+        grid[dragFromCell.value] = toVal;
+        grid[toIdx]              = fromVal;
+        const stocks = cellStocks.value[activeTab.value];
+        const tmpQty = stocks[dragFromCell.value].qty;
+        stocks[dragFromCell.value].qty = stocks[toIdx].qty;
+        stocks[toIdx].qty              = tmpQty;
+      } else {
+        grid[toIdx] = dragItem.value.id;
+      }
+      layouts.value[activeTab.value] = grid;
+      dragItem.value         = null;
+      dragFromCell.value     = null;
+      dragFromSource.value   = null;
+      draggingFromCell.value = null;
+    }
+
+    function removeFromCell(idx) {
+      const grid = [...layouts.value[activeTab.value]];
+      grid[idx] = null;
+      layouts.value[activeTab.value] = grid;
+      cellStocks.value[activeTab.value][idx].qty = 0;
+    }
+
+    function clearGrid() {
+      if (!confirm('このパターンのレイアウトをクリアしますか？')) return;
+      layouts.value[activeTab.value]    = EMPTY_GRID();
+      cellStocks.value[activeTab.value] = Array.from({length:16},()=>({qty:0}));
+    }
+
+    function copyToAll() {
+      if (!confirm('現在のパターンを朝・昼・夕すべてに適用しますか？')) return;
+      const src       = [...layouts.value[activeTab.value]];
+      const srcStocks = cellStocks.value[activeTab.value].map(s=>({qty:s.qty}));
+      layouts.value   = [src.slice(), src.slice(), src.slice()];
+      cellStocks.value = [
+        srcStocks.map(s=>({qty:s.qty})),
+        srcStocks.map(s=>({qty:s.qty})),
+        srcStocks.map(s=>({qty:s.qty})),
+      ];
+      showToast('全パターンに適用しました','success','📋');
+    }
+
+    /* ---- バリデーション ---- */
+    function validateStep(step) {
+      Object.keys(errors).forEach(k => delete errors[k]);
+      if (step===0) {
+        if (!budget.saleName.trim()) errors.saleName='セール名称を入力してください';
+        if (!budget.startDate)       errors.startDate='開始日を選択してください';
+        if (!budget.endDate)         errors.endDate='終了日を選択してください';
+        if (budget.startDate&&budget.endDate&&budget.endDate<budget.startDate)
+          errors.endDate='終了日は開始日以降にしてください';
+        if (Object.keys(errors).length>0) return false;
+        if (totalBudget.value===0) {
+          showToast('少なくとも1日分の目標金額を入力してください','error','⚠️');
+          return false;
+        }
+        return true;
+      }
+      if (step===1) {
+        if (Math.abs(totalRatio.value-100)>=1 && totalRatio.value>0) {
+          return confirm(`構成比の合計が${totalRatio.value.toFixed(1)}%です。\n100%でなくても次へ進みますか？`);
+        }
+        return true;
+      }
+      return true;
+    }
+
+    /* ---- ステップ遷移 ---- */
+    function nextStep(step) {
+      if (!validateStep(step)) return;
+      currentStep.value = step+1;
+      window.scrollTo({top:0,behavior:'smooth'});
+    }
+
+    function goStep(i) {
+      if (i<=currentStep.value) {
+        currentStep.value = i;
+        window.scrollTo({top:0,behavior:'smooth'});
+      }
+    }
+
+    /* ---- 保存・読込・リセット ---- */
+    function saveAll() {
+      const data = {
+        budget:     JSON.parse(JSON.stringify(budget)),
+        items:      JSON.parse(JSON.stringify(items.value)),
+        deletedIds: [...deletedIds.value],
+        layouts:    JSON.parse(JSON.stringify(layouts.value)),
+        cellStocks: JSON.parse(JSON.stringify(cellStocks.value)),
+        savedAt:    new Date().toISOString(),
+      };
+      localStorage.setItem('fryer_budget_plan_v6', JSON.stringify(data));
+      showToast('保存しました！','success','💾');
+    }
+
+    function loadAll() {
+      const raw = localStorage.getItem('fryer_budget_plan_v6');
+      if (!raw) return;
+      try {
+        const data = JSON.parse(raw);
+        Object.assign(budget, data.budget);
+        items.value      = data.items;
+        deletedIds.value = new Set(data.deletedIds||[]);
+        layouts.value    = data.layouts;
+        cellStocks.value = data.cellStocks || EMPTY_STOCKS();
+        showToast('前回のデータを読み込みました','info','📂');
+      } catch(e) { console.error(e); }
+    }
+
+    function resetAll() {
+      if (!confirm('すべてのデータをリセットしますか？')) return;
+      Object.assign(budget,{saleName:'',storeName:'',startDate:'',endDate:'',dailyTargets:[]});
+      items.value      = JSON.parse(JSON.stringify(DEFAULT_ITEMS));
+      deletedIds.value = new Set();
+      layouts.value    = DEFAULT_LAYOUTS();
+      cellStocks.value = EMPTY_STOCKS();
+      currentStep.value = 0;
+      sortKey.value    = '';
+      sortDir.value    = 'asc';
+      bulkBase.value   = null;
+      bulkRatio.value  = 100;
+      bulkStockQty.value   = null;
+      bulkStockScope.value = 'current';
+      localStorage.removeItem('fryer_budget_plan_v6');
+      showToast('リセットしました','info','🔄');
+    }
+
+    /* ---- 印刷 ---- */
+    function printAll() {
+      saveAll();
+      const printArea = document.getElementById('print-area');
+      printArea.style.display = 'block';
+      setTimeout(() => {
+        window.print();
+        setTimeout(() => { printArea.style.display='none'; }, 800);
+      }, 300);
+    }
+
+    /* ---- Toast ---- */
+    function showToast(message, type='success', icon='✅') {
+      toast.message = message;
+      toast.type    = type;
+      toast.icon    = icon;
+      toast.show    = true;
+      setTimeout(()=>toast.show=false, 3500);
+    }
+
+    onMounted(() => { loadAll(); });
+
+    return {
+      currentStep, steps, timeTabs, activeTab, ratioOptions,
+      budget, items, deletedIds, deletingId,
+      activeItems, deletedItems,
+      layouts, cellStocks, errors,
+      bulkBase, bulkRatio,
+      bulkStockQty, bulkStockScope, bulkStockScopes,
+      sortKey, sortDir, sortedActiveItems,
+      toast, dragOverCell, draggingFromCell,
+      totalBudget, totalRatio, totalUnits, totalSales, currentGrid,
+      fmtYen, calcDailyAmount, applyBulk,
+      applyBulkStock, clearBulkStock,
+      deleteItem, restoreItem, restoreAll,
+      setSort, resetSort,
+      equalizeRatios, autoCalcUnits, autoCalcRatios,
+      getItem, countInGrid, countInGridByTab,
+      getTotalStockByTab, getTotalStockAllItems, getTotalStockSalesByTab,
+      onDragStart, onDrop, removeFromCell, clearGrid, copyToAll,
+      nextStep, goStep, saveAll, resetAll, printAll,
+    };
+  }
+}).mount('#app');
+</script>
+
+<style>
+@media print {
+  #app > header,
+  #app > .step-indicator,
+  #app > div.max-w-6xl { display:none!important }
+  #print-area { display:block!important }
+  @page { size:A4 portrait; margin:12mm 10mm }
+  * { -webkit-print-color-adjust:exact!important; print-color-adjust:exact!important }
+  body { background:#fff!important; margin:0; padding:0 }
+  .print-page { display:block!important; page-break-after:always; page-break-inside:avoid; padding:0; margin:0 }
+  .print-page:last-child { page-break-after:avoid }
+  table { border-collapse:collapse!important }
+  th,td { border:1px solid #d1d5db!important }
+  .no-print { display:none!important }
+}
+@media screen { #print-area { display:none!important } }
+</style>
+</body>
+</html>
