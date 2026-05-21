@@ -45,7 +45,24 @@
     .layout-cell.drag-over{border-color:#f97316;background:#fff7ed;transform:scale(1.04)}
     .layout-cell.dragging {opacity:.4}
 
-    .item-chip{display:inline-flex;align-items:center;gap:4px;background:#fff;border:2px solid #e2e8f0;border-radius:8px;padding:4px 10px;font-size:11px;font-weight:600;cursor:grab;transition:all .2s;user-select:none}
+    /* ===== タッチD&D用ゴースト要素 ===== */
+    #touch-ghost{
+      position:fixed;
+      pointer-events:none;
+      z-index:9999;
+      border-radius:10px;
+      padding:6px 10px;
+      font-size:11px;
+      font-weight:700;
+      color:#fff;
+      white-space:nowrap;
+      box-shadow:0 8px 24px rgba(0,0,0,.3);
+      transform:translate(-50%,-50%) scale(1.08);
+      transition:transform .1s;
+      display:none;
+    }
+
+    .item-chip{display:inline-flex;align-items:center;gap:4px;background:#fff;border:2px solid #e2e8f0;border-radius:8px;padding:4px 10px;font-size:11px;font-weight:600;cursor:grab;transition:all .2s;user-select:none;touch-action:none}
     .item-chip:hover{border-color:#f97316;background:#fff7ed;transform:translateY(-1px);box-shadow:0 4px 12px rgba(0,0,0,.1)}
 
     .tab-btn{padding:8px 20px;border-radius:8px;font-weight:700;font-size:13px;transition:all .2s;cursor:pointer;border:none}
@@ -93,6 +110,33 @@
     .bulk-stock-panel .scope-btn:not(.selected){background:#fff;color:#0d9488;border-color:#5eead4}
     .bulk-stock-panel .scope-btn:not(.selected):hover{background:#f0fdfa}
 
+    /* ===== 保存履歴モーダル ===== */
+    .history-modal-overlay{
+      position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:1000;
+      display:flex;align-items:center;justify-content:center;padding:16px;
+    }
+    .history-modal{
+      background:#fff;border-radius:20px;width:100%;max-width:780px;
+      max-height:90vh;display:flex;flex-direction:column;
+      box-shadow:0 24px 64px rgba(0,0,0,.25);overflow:hidden;
+    }
+    .history-modal-header{
+      background:linear-gradient(135deg,#6366f1,#4f46e5);
+      color:#fff;padding:18px 24px;
+      display:flex;align-items:center;justify-content:space-between;flex-shrink:0;
+    }
+    .history-modal-body{overflow-y:auto;flex:1;padding:20px 24px}
+    .history-card{
+      border:1.5px solid #e2e8f0;border-radius:12px;padding:14px 16px;
+      transition:all .2s;cursor:pointer;
+    }
+    .history-card:hover{border-color:#6366f1;background:#f5f3ff;transform:translateY(-1px);box-shadow:0 4px 16px rgba(99,102,241,.15)}
+    .history-card.selected-card{border-color:#6366f1;background:#ede9fe;box-shadow:0 0 0 3px rgba(99,102,241,.2)}
+    .history-tag{display:inline-flex;align-items:center;gap:4px;background:#f1f5f9;border-radius:6px;padding:2px 8px;font-size:11px;font-weight:600;color:#475569}
+
+    /* ===== 保存ボタン（名前付き） ===== */
+    .save-name-panel{background:#f5f3ff;border:2px solid #c4b5fd;border-radius:12px;padding:12px 16px}
+
     @media print{
       @page{size:A4 portrait;margin:12mm 10mm}
       *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
@@ -100,7 +144,8 @@
       .no-print,header,.step-indicator,.progress-bar,
       .btn-primary,.btn-secondary,.btn-sm,.btn-danger,.btn-gray,.btn-teal,.btn-indigo,
       .tab-btn,.alert-box,.item-chip,.cell-remove-btn,
-      .row-del-btn,.restore-bar,.bulk-stock-panel,#toast-area{display:none!important}
+      .row-del-btn,.restore-bar,.bulk-stock-panel,#toast-area,
+      .history-modal-overlay,.save-name-panel{display:none!important}
       .card{box-shadow:none!important;border:1px solid #e2e8f0!important;border-radius:8px!important;margin-bottom:12px!important}
       .print-page{display:block!important;page-break-after:always;padding:0!important}
       .print-page:last-child{page-break-after:avoid}
@@ -116,6 +161,10 @@
   </style>
 </head>
 <body>
+
+<!-- タッチD&D用ゴースト要素（body直下） -->
+<div id="touch-ghost"></div>
+
 <div id="app" v-cloak>
 
   <!-- HEADER -->
@@ -128,10 +177,16 @@
           <div class="text-orange-100 text-xs">セブン-イレブン 揚げ物惣菜 売場予算プランナー</div>
         </div>
       </div>
-      <div class="flex items-center gap-2">
+      <div class="flex items-center gap-2 flex-wrap justify-end">
         <button @click="printAll" class="bg-white text-orange-600 font-bold text-xs px-3 py-1.5 rounded-lg hover:bg-orange-50 transition-all">🖨️ 全ページ印刷</button>
         <button @click="resetAll" class="text-orange-100 hover:text-white text-xs px-3 py-1.5 rounded-lg hover:bg-orange-700 transition-all">🔄 リセット</button>
-        <button @click="saveAll" class="bg-white text-orange-600 font-bold text-xs px-3 py-1.5 rounded-lg hover:bg-orange-50 transition-all">💾 保存</button>
+        <!-- 保存ボタン（名前付き保存） -->
+        <button @click="openSaveDialog" class="bg-white text-orange-600 font-bold text-xs px-3 py-1.5 rounded-lg hover:bg-orange-50 transition-all">💾 名前付き保存</button>
+        <!-- 履歴ボタン -->
+        <button @click="openHistoryModal" class="bg-indigo-500 text-white font-bold text-xs px-3 py-1.5 rounded-lg hover:bg-indigo-400 transition-all flex items-center gap-1">
+          📂 保存履歴
+          <span v-if="savedHistories.length>0" class="bg-white text-indigo-600 rounded-full px-1.5 py-0 text-xs font-black leading-tight">{{savedHistories.length}}</span>
+        </button>
       </div>
     </div>
   </header>
@@ -449,7 +504,9 @@
     <div v-show="currentStep===2" class="fade-in space-y-6">
       <div class="card p-6">
         <div class="section-header mb-1">🗺️ STEP 3：売場レイアウト設定</div>
-        <p class="text-slate-500 text-sm mb-4">4×4の16フェイスに商品をドラッグ＆ドロップで配置。各フェイスに仕込み数も入力できます。朝・昼・夕の3パターン設定可能です。</p>
+        <p class="text-slate-500 text-sm mb-4">4×4の16フェイスに商品をドラッグ＆ドロップで配置。各フェイスに仕込み数も入力できます。朝・昼・夕の3パターン設定可能です。<br>
+          <span class="text-indigo-600 font-bold">📱 スマートフォン・タブレットでも長押し→ドラッグで配置できます。</span>
+        </p>
 
         <div v-if="deletedItems.length>0" class="alert-box alert-warn mb-4">
           <span>⚠️</span>
@@ -463,57 +520,41 @@
           <button @click="copyToAll" class="tab-btn inactive ml-auto">📋 全パターンに適用</button>
         </div>
 
-        <!-- ========================================
-             仕込み数一括セットパネル
-        ======================================== -->
+        <!-- 仕込み数一括セットパネル -->
         <div class="bulk-stock-panel mb-5 no-print">
           <div class="flex items-center gap-2 mb-3">
             <span class="text-lg">📦</span>
             <span class="font-black text-teal-800 text-base">仕込み数 一括セット</span>
             <span class="text-xs text-teal-600 font-medium">配置済みフェイスの仕込み数をまとめて設定します</span>
           </div>
-
-          <!-- 入力行 -->
           <div class="flex flex-wrap items-end gap-3 mb-3">
             <div>
               <label class="block text-xs font-bold text-teal-700 mb-1">仕込み数</label>
               <div class="input-wrap">
-                <input
-                  v-model.number="bulkStockQty"
-                  type="number" min="0"
+                <input v-model.number="bulkStockQty" type="number" min="0"
                   class="input-field pr-8 text-center font-black text-lg"
-                  style="width:110px;border-color:#5eead4"
-                  placeholder="0"
-                  @keyup.enter="applyBulkStock"
-                />
+                  style="width:110px;border-color:#5eead4" placeholder="0"
+                  @keyup.enter="applyBulkStock" />
                 <span class="input-unit">個</span>
               </div>
             </div>
-
-            <!-- 適用スコープ選択 -->
             <div>
               <label class="block text-xs font-bold text-teal-700 mb-1">適用範囲</label>
               <div class="flex gap-1.5">
-                <button
-                  v-for="sc in bulkStockScopes" :key="sc.value"
+                <button v-for="sc in bulkStockScopes" :key="sc.value"
                   @click="bulkStockScope=sc.value"
                   :class="['scope-btn', bulkStockScope===sc.value?'selected':'']">
                   {{sc.label}}
                 </button>
               </div>
             </div>
-
-            <!-- 実行ボタン -->
             <button @click="applyBulkStock" class="btn-sm btn-teal px-5 py-2.5 text-sm flex items-center gap-2">
               <span>⚡</span> 一括反映
             </button>
-            <!-- クリアボタン -->
             <button @click="clearBulkStock" class="btn-sm btn-gray px-4 py-2.5 text-sm flex items-center gap-2">
               <span>🗑️</span> 仕込みをクリア
             </button>
           </div>
-
-          <!-- 適用範囲の説明 -->
           <div class="flex flex-wrap gap-2 text-xs text-teal-700">
             <span class="bg-teal-50 border border-teal-200 rounded-lg px-2.5 py-1">
               <strong>現パターン：</strong>現在表示中の{{timeTabs[activeTab].label}}のみ反映
@@ -525,8 +566,6 @@
               ⚠️ 商品が配置されていないフェイスには反映されません
             </span>
           </div>
-
-          <!-- 現在の仕込み数サマリー -->
           <div class="mt-3 pt-3 border-t border-teal-200">
             <div class="text-xs font-bold text-teal-700 mb-2">📊 現パターン（{{timeTabs[activeTab].label}}）の仕込み数サマリー</div>
             <div class="flex flex-wrap gap-2">
@@ -556,7 +595,7 @@
 
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <!-- 商品パレット -->
-          <div class="layout-section no-print">
+          <div class="layout-section no-print" id="palette-area">
             <div class="font-bold text-slate-700 mb-3 flex items-center gap-2">
               🧩 商品パレット
               <span class="text-xs text-slate-400 font-normal">（ドラッグして配置）</span>
@@ -569,7 +608,10 @@
                 class="item-chip"
                 :style="{borderColor:item.color,background:item.color+'18'}"
                 draggable="true"
-                @dragstart="onDragStart($event,item,'palette',null)">
+                @dragstart="onDragStart($event,item,'palette',null)"
+                @touchstart.passive="onTouchStart($event,item,'palette',null)"
+                @touchmove="onTouchMove($event)"
+                @touchend="onTouchEnd($event)">
                 <span class="color-dot" :style="{background:item.color}"></span>
                 <span class="text-xs flex-1">{{item.name}}</span>
                 <span class="text-slate-400 text-xs ml-auto">{{item.price}}円</span>
@@ -604,7 +646,8 @@
               <div class="flex flex-col gap-1 justify-around no-print">
                 <div v-for="r in 4" :key="r" class="text-xs font-bold text-slate-400 flex items-center" style="height:80px">行{{r}}</div>
               </div>
-              <div class="layout-grid flex-1">
+              <!-- グリッド本体 -->
+              <div class="layout-grid flex-1" id="layout-grid-area">
                 <div v-for="(cell,idx) in currentGrid" :key="idx"
                   class="layout-cell"
                   :class="{
@@ -612,6 +655,7 @@
                     'drag-over':dragOverCell===idx,
                     'dragging':draggingFromCell===idx
                   }"
+                  :data-cell-idx="idx"
                   :style="cell?{background:getItem(cell).color,borderColor:getItem(cell).color}:{}"
                   @dragover.prevent="dragOverCell=idx"
                   @dragleave="dragOverCell=null"
@@ -645,6 +689,7 @@
               <div class="text-xs font-bold text-slate-500 mb-1">💡 操作方法</div>
               <div class="flex flex-wrap gap-3 text-xs text-slate-500">
                 <span>🖱️ パレットからドラッグ→フェイスにドロップで配置</span>
+                <span>📱 スマホ・タブレット：長押し→ドラッグで配置</span>
                 <span>🔄 フェイス同士でドラッグ→移動</span>
                 <span>✕ 右上ボタンで削除</span>
                 <span>🔢 フェイス内の数値欄に仕込み数を入力</span>
@@ -736,7 +781,7 @@
         </div>
         <div class="flex flex-wrap gap-3 justify-end no-print">
           <button @click="currentStep=1" class="btn-secondary px-6 py-3">← 戻る</button>
-          <button @click="saveAll" class="btn-primary px-8 py-3">💾 計画を保存する</button>
+          <button @click="openSaveDialog" class="btn-primary px-8 py-3">💾 名前付き保存</button>
           <button @click="printAll" class="btn-secondary px-6 py-3">🖨️ 全ページ印刷</button>
         </div>
       </div>
@@ -745,10 +790,148 @@
   </div><!-- /main -->
 
   <!-- ============================================================
+       名前付き保存ダイアログ
+  ============================================================ -->
+  <div v-if="showSaveDialog" class="history-modal-overlay" @click.self="showSaveDialog=false">
+    <div class="history-modal" style="max-width:480px">
+      <div class="history-modal-header">
+        <div class="flex items-center gap-3">
+          <span class="text-2xl">💾</span>
+          <div>
+            <div class="font-black text-lg">名前付き保存</div>
+            <div class="text-indigo-200 text-xs">保存名を入力して履歴に追加します</div>
+          </div>
+        </div>
+        <button @click="showSaveDialog=false" class="text-white hover:text-indigo-200 text-2xl font-black leading-none">×</button>
+      </div>
+      <div class="history-modal-body">
+        <div class="save-name-panel mb-4">
+          <label class="block text-sm font-bold text-slate-700 mb-2">📝 保存名 <span class="text-red-500">*</span></label>
+          <input v-model="saveDialogName" class="input-field" placeholder="例：夏フェア計画 v1" @keyup.enter="confirmSave" />
+          <p class="text-xs text-slate-500 mt-2">※ セール名・日付が自動で付与されます</p>
+        </div>
+        <div class="bg-slate-50 rounded-xl p-4 mb-4 text-sm">
+          <div class="font-bold text-slate-600 mb-2">保存内容プレビュー</div>
+          <div class="space-y-1 text-xs text-slate-600">
+            <div>📅 セール名：<strong>{{budget.saleName||'（未設定）'}}</strong></div>
+            <div>🏪 店舗名：<strong>{{budget.storeName||'（未設定）'}}</strong></div>
+            <div>📆 期間：<strong>{{budget.startDate||'?'}} 〜 {{budget.endDate||'?'}}</strong></div>
+            <div>💰 合計目標：<strong>{{fmtYen(totalBudget)}}</strong></div>
+            <div>🍗 商品数：<strong>{{activeItems.length}}種</strong></div>
+          </div>
+        </div>
+        <div class="flex gap-3 justify-end">
+          <button @click="showSaveDialog=false" class="btn-secondary px-5 py-2.5">キャンセル</button>
+          <button @click="confirmSave" class="btn-primary px-6 py-2.5">💾 保存する</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================
+       保存履歴モーダル
+  ============================================================ -->
+  <div v-if="showHistoryModal" class="history-modal-overlay" @click.self="showHistoryModal=false">
+    <div class="history-modal">
+      <div class="history-modal-header">
+        <div class="flex items-center gap-3">
+          <span class="text-2xl">📂</span>
+          <div>
+            <div class="font-black text-lg">保存履歴</div>
+            <div class="text-indigo-200 text-xs">{{savedHistories.length}}件の保存データ（最大20件）</div>
+          </div>
+        </div>
+        <button @click="showHistoryModal=false" class="text-white hover:text-indigo-200 text-2xl font-black leading-none">×</button>
+      </div>
+      <div class="history-modal-body">
+
+        <!-- 空状態 -->
+        <div v-if="savedHistories.length===0" class="text-center py-16">
+          <div class="text-5xl mb-4">📭</div>
+          <div class="font-bold text-slate-500 text-lg">保存データがありません</div>
+          <div class="text-slate-400 text-sm mt-2">「名前付き保存」ボタンから計画を保存してください</div>
+        </div>
+
+        <!-- 履歴リスト -->
+        <div v-else class="space-y-3">
+          <!-- 一括操作 -->
+          <div class="flex items-center justify-between mb-2">
+            <div class="text-xs text-slate-500 font-bold">クリックで詳細表示 / ダブルクリックで読み込み</div>
+            <button @click="clearAllHistories" class="btn-sm btn-danger text-xs px-3 py-1.5">🗑️ 全件削除</button>
+          </div>
+
+          <div v-for="(h,hi) in savedHistories" :key="h.id"
+            class="history-card"
+            :class="{'selected-card': selectedHistoryId===h.id}"
+            @click="selectHistory(h.id)"
+            @dblclick="loadHistory(h.id)">
+            <div class="flex items-start justify-between gap-3">
+              <div class="flex-1 min-w-0">
+                <!-- 保存名 -->
+                <div class="flex items-center gap-2 mb-1">
+                  <span class="text-base font-black text-slate-800 truncate">{{h.saveName}}</span>
+                  <span v-if="hi===0" class="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-bold flex-shrink-0">最新</span>
+                </div>
+                <!-- タグ行 -->
+                <div class="flex flex-wrap gap-1.5 mb-2">
+                  <span class="history-tag">📅 {{h.budget.saleName||'名称未設定'}}</span>
+                  <span class="history-tag">🏪 {{h.budget.storeName||'店舗未設定'}}</span>
+                  <span class="history-tag">📆 {{h.budget.startDate||'?'}}〜{{h.budget.endDate||'?'}}</span>
+                </div>
+                <!-- 数値サマリー -->
+                <div class="flex flex-wrap gap-3 text-xs text-slate-600">
+                  <span>💰 <strong class="text-orange-600">{{fmtYen(calcHistoryBudget(h))}}</strong></span>
+                  <span>🍗 <strong>{{h.activeItemCount}}種</strong></span>
+                  <span>📊 <strong>{{h.budget.dailyTargets.length}}日間</strong></span>
+                  <span class="text-slate-400">🕐 {{formatDate(h.savedAt)}}</span>
+                </div>
+              </div>
+              <!-- 操作ボタン -->
+              <div class="flex flex-col gap-1.5 flex-shrink-0">
+                <button @click.stop="loadHistory(h.id)"
+                  class="btn-sm btn-indigo text-xs px-3 py-1.5 whitespace-nowrap">
+                  📥 読み込む
+                </button>
+                <button @click.stop="deleteHistory(h.id)"
+                  class="btn-sm btn-danger text-xs px-3 py-1.5 whitespace-nowrap">
+                  🗑️ 削除
+                </button>
+              </div>
+            </div>
+
+            <!-- 展開詳細（選択時） -->
+            <div v-if="selectedHistoryId===h.id" class="mt-3 pt-3 border-t border-indigo-100">
+              <div class="text-xs font-bold text-slate-600 mb-2">📋 商品構成</div>
+              <div class="flex flex-wrap gap-1.5">
+                <span v-for="item in h.items.filter(i=>!h.deletedIds.includes(i.id))" :key="item.id"
+                  class="text-xs px-2 py-0.5 rounded-full font-bold"
+                  :style="{background:item.color+'22',color:item.color,border:'1px solid '+item.color}">
+                  {{item.name}} {{item.ratio}}%
+                </span>
+              </div>
+              <div class="mt-2 text-xs text-slate-500">
+                朝レイアウト: {{h.layouts[0].filter(c=>c!==null).length}}フェイス配置 /
+                昼: {{h.layouts[1].filter(c=>c!==null).length}}フェイス /
+                夕: {{h.layouts[2].filter(c=>c!==null).length}}フェイス
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- フッター -->
+      <div class="px-6 py-4 border-t border-slate-100 bg-slate-50 flex items-center justify-between flex-shrink-0">
+        <div class="text-xs text-slate-500">
+          💡 読み込むと現在の作業内容が上書きされます
+        </div>
+        <button @click="showHistoryModal=false" class="btn-secondary px-5 py-2">閉じる</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================
        印刷専用エリア
   ============================================================ -->
   <div id="print-area">
-
     <!-- 印刷P1: 販売目標金額 -->
     <div class="print-page">
       <div style="background:#f97316;color:#fff;padding:12px 16px;border-radius:8px;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between">
@@ -952,7 +1135,6 @@
         </tfoot>
       </table>
     </div>
-
   </div><!-- /print-area -->
 
   <!-- Toast -->
@@ -1023,6 +1205,13 @@ const DEFAULT_LAYOUTS = () => [
   EMPTY_GRID(),
 ];
 
+/* ================================================================
+   localStorage キー定数
+================================================================ */
+const LS_CURRENT_KEY  = 'fryer_budget_plan_v6';
+const LS_HISTORY_KEY  = 'fryer_budget_history_v1';
+const MAX_HISTORY     = 20;
+
 createApp({
   setup() {
 
@@ -1059,9 +1248,8 @@ createApp({
     const sortKey = ref('');
     const sortDir = ref('asc');
 
-    /* ---- 仕込み数一括セット ---- */
-    const bulkStockQty   = ref(null);   // 入力値（空欄スタート）
-    const bulkStockScope = ref('current'); // 'current' | 'all'
+    const bulkStockQty   = ref(null);
+    const bulkStockScope = ref('current');
     const bulkStockScopes = [
       { value:'current', label:'現パターンのみ' },
       { value:'all',     label:'全パターン（朝・昼・夕）' },
@@ -1069,11 +1257,27 @@ createApp({
 
     const toast = reactive({ show:false, message:'', type:'success', icon:'✅' });
 
+    /* ---- D&D State ---- */
     const dragItem         = ref(null);
     const dragFromCell     = ref(null);
     const dragFromSource   = ref(null);
     const dragOverCell     = ref(null);
     const draggingFromCell = ref(null);
+
+    /* ---- 保存履歴 State ---- */
+    const savedHistories    = ref([]);   // 履歴配列
+    const showHistoryModal  = ref(false);
+    const showSaveDialog    = ref(false);
+    const saveDialogName    = ref('');
+    const selectedHistoryId = ref(null);
+
+    /* ================================================================
+       タッチD&D 用 State
+    ================================================================ */
+    let touchDragItem   = null;   // ドラッグ中のアイテムオブジェクト
+    let touchDragSource = null;   // 'palette' | 'grid'
+    let touchDragFromCell = null; // グリッドからの場合のセルインデックス
+    const ghostEl = document.getElementById('touch-ghost');
 
     /* ---- Computed ---- */
     const activeItems = computed(() =>
@@ -1159,8 +1363,6 @@ createApp({
     }
 
     /* ---- 仕込み数一括セット ---- */
-
-    // 指定タブの配置済みフェイスすべてに qty をセット
     function applyStockToTab(tabIdx, qty) {
       const grid = layouts.value[tabIdx];
       grid.forEach((cell, idx) => {
@@ -1176,15 +1378,10 @@ createApp({
         showToast('0以上の整数を入力してください','error','⚠️');
         return;
       }
-
       if (bulkStockScope.value === 'all') {
-        // 朝・昼・夕すべてに反映
-        for (let ti = 0; ti < 3; ti++) {
-          applyStockToTab(ti, qty);
-        }
+        for (let ti = 0; ti < 3; ti++) applyStockToTab(ti, qty);
         showToast(`朝・昼・夕すべてに ${qty}個 を一括反映しました`, 'success', '📦');
       } else {
-        // 現パターンのみ
         applyStockToTab(activeTab.value, qty);
         showToast(`${timeTabs[activeTab.value].label}パターンに ${qty}個 を一括反映しました`, 'success', '📦');
       }
@@ -1193,11 +1390,8 @@ createApp({
     function clearBulkStock() {
       const target = bulkStockScope.value === 'all' ? '朝・昼・夕すべて' : timeTabs[activeTab.value].label;
       if (!confirm(`${target}の仕込み数をすべて0にクリアしますか？`)) return;
-
       if (bulkStockScope.value === 'all') {
-        for (let ti = 0; ti < 3; ti++) {
-          applyStockToTab(ti, 0);
-        }
+        for (let ti = 0; ti < 3; ti++) applyStockToTab(ti, 0);
         showToast('朝・昼・夕すべての仕込み数をクリアしました','info','🗑️');
       } else {
         applyStockToTab(activeTab.value, 0);
@@ -1313,7 +1507,9 @@ createApp({
       return total;
     }
 
-    /* ---- Drag & Drop ---- */
+    /* ================================================================
+       マウス Drag & Drop
+    ================================================================ */
     function onDragStart(e, item, source, cellIdx) {
       dragItem.value       = item;
       dragFromSource.value = source;
@@ -1372,6 +1568,112 @@ createApp({
       showToast('全パターンに適用しました','success','📋');
     }
 
+    /* ================================================================
+       タッチ Drag & Drop
+       ─ touchstart → ゴースト表示
+       ─ touchmove  → ゴースト追従 + ドロップ先ハイライト
+       ─ touchend   → ドロップ処理
+    ================================================================ */
+
+    /** タッチ開始：ドラッグ情報を記録してゴーストを表示 */
+    function onTouchStart(e, item, source, cellIdx) {
+      // 入力欄タッチは無視
+      if (e.target.tagName === 'INPUT') return;
+
+      touchDragItem     = item;
+      touchDragSource   = source;
+      touchDragFromCell = cellIdx;
+
+      const touch = e.touches[0];
+
+      // ゴースト要素を設定
+      ghostEl.textContent  = item.name;
+      ghostEl.style.background = item.color;
+      ghostEl.style.left   = touch.clientX + 'px';
+      ghostEl.style.top    = touch.clientY + 'px';
+      ghostEl.style.display = 'block';
+
+      if (cellIdx !== null) draggingFromCell.value = cellIdx;
+    }
+
+    /** タッチ移動：ゴーストを指に追従させ、ドロップ先セルをハイライト */
+    function onTouchMove(e) {
+      if (!touchDragItem) return;
+      e.preventDefault(); // スクロール抑制
+
+      const touch = e.touches[0];
+      ghostEl.style.left = touch.clientX + 'px';
+      ghostEl.style.top  = touch.clientY + 'px';
+
+      // 指の下にある要素を取得してセルインデックスを特定
+      ghostEl.style.display = 'none'; // 一時的に非表示にして要素を取得
+      const el = document.elementFromPoint(touch.clientX, touch.clientY);
+      ghostEl.style.display = 'block';
+
+      const cellEl = el ? el.closest('[data-cell-idx]') : null;
+      if (cellEl) {
+        dragOverCell.value = parseInt(cellEl.dataset.cellIdx);
+      } else {
+        dragOverCell.value = null;
+      }
+    }
+
+    /** タッチ終了：ドロップ処理を実行してゴーストを非表示 */
+    function onTouchEnd(e) {
+      if (!touchDragItem) return;
+
+      const touch = e.changedTouches[0];
+
+      // ゴーストを一時非表示にして要素取得
+      ghostEl.style.display = 'none';
+      const el = document.elementFromPoint(touch.clientX, touch.clientY);
+      ghostEl.style.display = 'none'; // 完全に隠す
+
+      const cellEl = el ? el.closest('[data-cell-idx]') : null;
+
+      if (cellEl) {
+        const toIdx = parseInt(cellEl.dataset.cellIdx);
+        const grid  = [...layouts.value[activeTab.value]];
+
+        if (touchDragSource === 'grid' && touchDragFromCell !== null) {
+          // グリッド→グリッド（スワップ）
+          const fromVal = grid[touchDragFromCell];
+          const toVal   = grid[toIdx];
+          grid[touchDragFromCell] = toVal;
+          grid[toIdx]             = fromVal;
+          const stocks = cellStocks.value[activeTab.value];
+          const tmpQty = stocks[touchDragFromCell].qty;
+          stocks[touchDragFromCell].qty = stocks[toIdx].qty;
+          stocks[toIdx].qty             = tmpQty;
+        } else {
+          // パレット→グリッド
+          grid[toIdx] = touchDragItem.id;
+        }
+        layouts.value[activeTab.value] = grid;
+      }
+
+      // リセット
+      touchDragItem     = null;
+      touchDragSource   = null;
+      touchDragFromCell = null;
+      dragOverCell.value     = null;
+      draggingFromCell.value = null;
+    }
+
+    /* ================================================================
+       グリッドセルのタッチD&D（グリッド→グリッド移動）
+       ─ グリッドセル自体にも touchstart/move/end を付与する必要があるため
+         Vue テンプレート側で @touchstart/@touchmove/@touchend を追加する
+         代わりに、ここでは onTouchStart を共通関数として使う
+    ================================================================ */
+    function onCellTouchStart(e, cellIdx) {
+      const cell = layouts.value[activeTab.value][cellIdx];
+      if (!cell) return;
+      if (e.target.tagName === 'INPUT') return;
+      const item = getItem(cell);
+      onTouchStart(e, item, 'grid', cellIdx);
+    }
+
     /* ---- バリデーション ---- */
     function validateStep(step) {
       Object.keys(errors).forEach(k => delete errors[k]);
@@ -1411,9 +1713,11 @@ createApp({
       }
     }
 
-    /* ---- 保存・読込・リセット ---- */
-    function saveAll() {
-      const data = {
+    /* ================================================================
+       保存・読込・リセット（既存の自動保存）
+    ================================================================ */
+    function buildSaveData() {
+      return {
         budget:     JSON.parse(JSON.stringify(budget)),
         items:      JSON.parse(JSON.stringify(items.value)),
         deletedIds: [...deletedIds.value],
@@ -1421,12 +1725,16 @@ createApp({
         cellStocks: JSON.parse(JSON.stringify(cellStocks.value)),
         savedAt:    new Date().toISOString(),
       };
-      localStorage.setItem('fryer_budget_plan_v6', JSON.stringify(data));
-      showToast('保存しました！','success','💾');
+    }
+
+    function saveAll() {
+      const data = buildSaveData();
+      localStorage.setItem(LS_CURRENT_KEY, JSON.stringify(data));
+      showToast('自動保存しました！','success','💾');
     }
 
     function loadAll() {
-      const raw = localStorage.getItem('fryer_budget_plan_v6');
+      const raw = localStorage.getItem(LS_CURRENT_KEY);
       if (!raw) return;
       try {
         const data = JSON.parse(raw);
@@ -1453,8 +1761,129 @@ createApp({
       bulkRatio.value  = 100;
       bulkStockQty.value   = null;
       bulkStockScope.value = 'current';
-      localStorage.removeItem('fryer_budget_plan_v6');
+      localStorage.removeItem(LS_CURRENT_KEY);
       showToast('リセットしました','info','🔄');
+    }
+
+    /* ================================================================
+       名前付き保存 ＆ 履歴管理
+    ================================================================ */
+
+    /** 履歴をlocalStorageから読み込む */
+    function loadHistories() {
+      try {
+        const raw = localStorage.getItem(LS_HISTORY_KEY);
+        savedHistories.value = raw ? JSON.parse(raw) : [];
+      } catch(e) {
+        savedHistories.value = [];
+      }
+    }
+
+    /** 履歴をlocalStorageに書き込む */
+    function persistHistories() {
+      localStorage.setItem(LS_HISTORY_KEY, JSON.stringify(savedHistories.value));
+    }
+
+    /** 保存ダイアログを開く */
+    function openSaveDialog() {
+      saveDialogName.value = budget.saleName
+        ? `${budget.saleName} ${new Date().toLocaleDateString('ja-JP')}`
+        : `計画 ${new Date().toLocaleDateString('ja-JP')}`;
+      showSaveDialog.value = true;
+    }
+
+    /** 保存を確定する */
+    function confirmSave() {
+      const name = saveDialogName.value.trim();
+      if (!name) {
+        showToast('保存名を入力してください','error','⚠️');
+        return;
+      }
+
+      // 現在データを自動保存キーにも書く
+      const data = buildSaveData();
+      localStorage.setItem(LS_CURRENT_KEY, JSON.stringify(data));
+
+      // 履歴エントリを作成
+      const entry = {
+        id:             Date.now().toString(),
+        saveName:       name,
+        savedAt:        new Date().toISOString(),
+        activeItemCount: activeItems.value.length,
+        ...data,
+      };
+
+      // 先頭に追加し、最大件数を超えたら末尾を削除
+      savedHistories.value.unshift(entry);
+      if (savedHistories.value.length > MAX_HISTORY) {
+        savedHistories.value = savedHistories.value.slice(0, MAX_HISTORY);
+      }
+      persistHistories();
+
+      showSaveDialog.value = false;
+      showToast(`「${name}」として保存しました`, 'success', '💾');
+    }
+
+    /** 履歴モーダルを開く */
+    function openHistoryModal() {
+      loadHistories();
+      selectedHistoryId.value = null;
+      showHistoryModal.value  = true;
+    }
+
+    /** 履歴カードを選択（詳細展開） */
+    function selectHistory(id) {
+      selectedHistoryId.value = selectedHistoryId.value === id ? null : id;
+    }
+
+    /** 履歴から読み込む */
+    function loadHistory(id) {
+      const h = savedHistories.value.find(h => h.id === id);
+      if (!h) return;
+      if (!confirm(`「${h.saveName}」を読み込みますか？\n現在の作業内容は上書きされます。`)) return;
+
+      Object.assign(budget, JSON.parse(JSON.stringify(h.budget)));
+      items.value      = JSON.parse(JSON.stringify(h.items));
+      deletedIds.value = new Set(h.deletedIds||[]);
+      layouts.value    = JSON.parse(JSON.stringify(h.layouts));
+      cellStocks.value = h.cellStocks ? JSON.parse(JSON.stringify(h.cellStocks)) : EMPTY_STOCKS();
+
+      // 自動保存キーにも反映
+      localStorage.setItem(LS_CURRENT_KEY, JSON.stringify(buildSaveData()));
+
+      showHistoryModal.value = false;
+      showToast(`「${h.saveName}」を読み込みました`, 'success', '📥');
+    }
+
+    /** 履歴を1件削除 */
+    function deleteHistory(id) {
+      const h = savedHistories.value.find(h => h.id === id);
+      if (!h) return;
+      if (!confirm(`「${h.saveName}」を削除しますか？`)) return;
+      savedHistories.value = savedHistories.value.filter(h => h.id !== id);
+      persistHistories();
+      if (selectedHistoryId.value === id) selectedHistoryId.value = null;
+      showToast('削除しました','info','🗑️');
+    }
+
+    /** 全履歴を削除 */
+    function clearAllHistories() {
+      if (!confirm(`保存履歴を全件（${savedHistories.value.length}件）削除しますか？\nこの操作は元に戻せません。`)) return;
+      savedHistories.value = [];
+      persistHistories();
+      showToast('全履歴を削除しました','info','🗑️');
+    }
+
+    /** 履歴の合計予算を計算（表示用） */
+    function calcHistoryBudget(h) {
+      return (h.budget.dailyTargets||[]).reduce((s,d) => s+(d.amount||0), 0);
+    }
+
+    /** 日時フォーマット */
+    function formatDate(iso) {
+      if (!iso) return '';
+      const d = new Date(iso);
+      return `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
     }
 
     /* ---- 印刷 ---- */
@@ -1477,7 +1906,10 @@ createApp({
       setTimeout(()=>toast.show=false, 3500);
     }
 
-    onMounted(() => { loadAll(); });
+    onMounted(() => {
+      loadAll();
+      loadHistories();
+    });
 
     return {
       currentStep, steps, timeTabs, activeTab, ratioOptions,
@@ -1489,6 +1921,10 @@ createApp({
       sortKey, sortDir, sortedActiveItems,
       toast, dragOverCell, draggingFromCell,
       totalBudget, totalRatio, totalUnits, totalSales, currentGrid,
+      /* 保存履歴 */
+      savedHistories, showHistoryModal, showSaveDialog,
+      saveDialogName, selectedHistoryId,
+      /* メソッド */
       fmtYen, calcDailyAmount, applyBulk,
       applyBulkStock, clearBulkStock,
       deleteItem, restoreItem, restoreAll,
@@ -1497,6 +1933,13 @@ createApp({
       getItem, countInGrid, countInGridByTab,
       getTotalStockByTab, getTotalStockAllItems, getTotalStockSalesByTab,
       onDragStart, onDrop, removeFromCell, clearGrid, copyToAll,
+      /* タッチD&D */
+      onTouchStart, onTouchMove, onTouchEnd, onCellTouchStart,
+      /* 保存履歴操作 */
+      openSaveDialog, confirmSave,
+      openHistoryModal, selectHistory, loadHistory,
+      deleteHistory, clearAllHistories,
+      calcHistoryBudget, formatDate,
       nextStep, goStep, saveAll, resetAll, printAll,
     };
   }
